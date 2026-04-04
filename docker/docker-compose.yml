@@ -1,0 +1,40 @@
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# 9Router - Connect All AI Code Tools to 40+ AI Providers & 100+ Models
+# -----------------------------------------
+# A self-hosted, open-source, and privacy-focused router for your applications.
+# GitHub: https://github.com/nguyenquy0710/9router
+# Documentation: https://9router.com/
+# -----------------------------------------
+# START: docker-compose -f .\docker\docker-compose.yml up -d --build --force-recreate --remove-orphans
+# STOP: docker-compose -f .\docker\docker-compose.yml down -v --remove-orphans
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+services:
+  # 9router service to run the 9router application
+  9router:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: nqdev/9router:latest
+    container_name: 9router
+    restart: unless-stopped
+    # network_mode: host
+    ports:
+      - "20128:20128"
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+      # Required
+      - JWT_SECRET=${JWT_SECRET:-9router-secret}
+      - INITIAL_PASSWORD=${INITIAL_PASSWORD:-9router-password}
+      # Recommended security and ops variables
+      - API_KEY_SECRET=${API_KEY_SECRET:-9router-api-key-secret}
+      - AUTH_COOKIE_SECURE=${AUTH_COOKIE_SECURE:-true}
+    env_file:
+      - .env
+    volumes:
+      - 9router-data:/app/data
+      - 9router-usage:/root/.9router
+
+volumes:
+  9router-data:
+  9router-usage:
