@@ -15,7 +15,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    image: nqdev/9router:latest
+    image: nqdev/9router:${VERSION:-latest}
     container_name: 9router
     restart: unless-stopped
     # network_mode: host
@@ -23,6 +23,7 @@ services:
       - "20128:20128"
     environment:
       - TZ=Asia/Ho_Chi_Minh
+      - VERSION=${VERSION:-latest}
       # Required application variables
       - JWT_SECRET=${JWT_SECRET:-9router-secret}  # openssl rand -base64 32
       - INITIAL_PASSWORD=${INITIAL_PASSWORD:-9router-password}
