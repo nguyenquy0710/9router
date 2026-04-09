@@ -10,7 +10,8 @@ const { isTokenSwapEnabled, getAllActiveConnections, triggerRefreshIfNeeded,
         forceRefreshConnection, setCooldown, setAuthCooldown, setModelCooldown,
         recordStrike, recordModelStrike, clearStrikes, clearModelStrikes,
         getTokenSwapStrategy,
-        parseQuotaCooldown, markAccountUsed, getConnectionLabel, getTokenSwapAvailabilitySummary } = require("./tokenPool");
+        parseQuotaCooldown, shouldImmediateQuotaCooldown,
+        markAccountUsed, getConnectionLabel, getTokenSwapAvailabilitySummary } = require("./tokenPool");
 const { getCertForDomain } = require("./cert/generate");
 const { buildInputOnlyRequestDetail, createTokenSwapUsageObserver, generateDetailId } = require("./usageTracker");
 
@@ -186,6 +187,7 @@ async function passthrough(req, res, bodyBuffer, onResponse) {
 async function tokenSwapForward(req, res, bodyBuffer, connections, model, strategy, provider, requestStartTime) {
   const targetHost = (req.headers.host || TARGET_HOSTS[0]).split(":")[0];
   const targetIP = await resolveTargetIP(targetHost);
+  let lastRetryResponse = null;
 
   for (let i = 0; i < connections.length; i++) {
     const originalConn = connections[i];
@@ -236,12 +238,28 @@ async function tokenSwapForward(req, res, bodyBuffer, connections, model, strate
         if (result.retry && result.retryType === "quota") {
           const cooldownMs = parseQuotaCooldown(result.body);
           const cdLabel = cooldownMs ? ` cooldown=${Math.ceil(cooldownMs / 60000)}m` : "";
+          const immediateCooldown = shouldImmediateQuotaCooldown(result.statusCode, result.body);
+          lastRetryResponse = {
+            statusCode: result.statusCode,
+            headers: result.headers,
+            body: result.body,
+          };
           if (strategy === "sticky" && model) {
-            const locked = recordModelStrike(conn.id, model, cooldownMs);
-            log(`⚠️ [token-swap] "${label}" → ${result.statusCode} model=${model}${locked ? " LOCKED" : " strike"}${cdLabel}, trying next...`);
+            if (immediateCooldown) {
+              setModelCooldown(conn.id, model, cooldownMs);
+              log(`⚠️ [token-swap] "${label}" → ${result.statusCode} model=${model} COOLDOWN${cdLabel}, trying next...`);
+            } else {
+              const locked = recordModelStrike(conn.id, model, cooldownMs);
+              log(`⚠️ [token-swap] "${label}" → ${result.statusCode} model=${model}${locked ? " LOCKED" : " strike"}${cdLabel}, trying next...`);
+            }
           } else {
-            const locked = recordStrike(conn.id, cooldownMs);
-            log(`⚠️ [token-swap] "${label}" → ${result.statusCode}${locked ? " LOCKED" : " strike"}${cdLabel}, trying next...`);
+            if (immediateCooldown) {
+              setCooldown(conn.id, cooldownMs);
+              log(`⚠️ [token-swap] "${label}" → ${result.statusCode} COOLDOWN${cdLabel}, trying next...`);
+            } else {
+              const locked = recordStrike(conn.id, cooldownMs);
+              log(`⚠️ [token-swap] "${label}" → ${result.statusCode}${locked ? " LOCKED" : " strike"}${cdLabel}, trying next...`);
+            }
           }
           break;
         }
@@ -266,6 +284,11 @@ async function tokenSwapForward(req, res, bodyBuffer, connections, model, strate
           }
 
           setAuthCooldown(conn.id);
+          lastRetryResponse = {
+            statusCode: result.statusCode,
+            headers: result.headers,
+            body: result.body,
+          };
           log(`⚠️ [token-swap] "${label}" → 401 invalid_token, trying next...`);
           break;
         }
@@ -333,7 +356,14 @@ async function tokenSwapForward(req, res, bodyBuffer, connections, model, strate
     }
   }
 
-  // All accounts exhausted
+  if (lastRetryResponse) {
+    log(`⚠️ [token-swap] exhausted ${connections.length} account(s), returning last retryable ${lastRetryResponse.statusCode}`);
+    res.writeHead(lastRetryResponse.statusCode, lastRetryResponse.headers);
+    res.end(lastRetryResponse.body);
+    return true;
+  }
+
+  // All accounts exhausted with no retryable upstream response captured
   return false;
 }
 
@@ -466,4 +496,3 @@ process.setMaxListeners(0);
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 if (process.platform === "win32") process.on("SIGBREAK", shutdown);
-

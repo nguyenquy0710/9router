@@ -16,6 +16,7 @@ const ROUTER_PORT = process.env.PORT || 20128;
 const DEFAULT_COOLDOWN_MS = 2 * 60 * 1000;
 const DEFAULT_AUTH_COOLDOWN_MS = 10 * 60 * 1000;
 const DEFAULT_STRIKE_THRESHOLD = 3; // consecutive 429s before hard cooldown
+const CAPACITY_EXHAUSTED_COOLDOWN_MS = 60 * 1000;
 
 // ── In-memory state ──────────────────────────────────────────
 const cooldownMap = {};        // { [connectionId]: expiresTimestamp } quota/general cooldown
@@ -168,17 +169,44 @@ function getTokenSwapStrategy() {
 // ── Quota cooldown parser ────────────────────────────────────
 // Antigravity error format: "Your quota will reset after 2h7m23s"
 function parseQuotaCooldown(errorBody) {
+  const raw = String(errorBody || "");
+
   try {
-    const json = JSON.parse(errorBody);
+    const json = JSON.parse(raw);
     const msg = json?.error?.message || json?.message || "";
+    const reason = String(
+      json?.error?.details?.[0]?.reason ||
+      json?.error?.reason ||
+      json?.reason ||
+      ""
+    ).toUpperCase();
     const match = msg.match(/reset after (\d+h)?(\d+m)?(\d+s)?/i);
-    if (!match) return null;
-    let ms = 0;
-    if (match[1]) ms += parseInt(match[1]) * 3600000;
-    if (match[2]) ms += parseInt(match[2]) * 60000;
-    if (match[3]) ms += parseInt(match[3]) * 1000;
-    return ms > 0 ? ms : null;
-  } catch { return null; }
+    if (match) {
+      let ms = 0;
+      if (match[1]) ms += parseInt(match[1]) * 3600000;
+      if (match[2]) ms += parseInt(match[2]) * 60000;
+      if (match[3]) ms += parseInt(match[3]) * 1000;
+      return ms > 0 ? ms : null;
+    }
+
+    if (
+      reason === "MODEL_CAPACITY_EXHAUSTED" ||
+      /no capacity available for model|model capacity exhausted|capacity exhausted/i.test(msg)
+    ) {
+      return CAPACITY_EXHAUSTED_COOLDOWN_MS;
+    }
+  } catch {
+    if (/no capacity available for model|model capacity exhausted|capacity exhausted/i.test(raw)) {
+      return CAPACITY_EXHAUSTED_COOLDOWN_MS;
+    }
+  }
+
+  return null;
+}
+
+function shouldImmediateQuotaCooldown(statusCode, errorBody) {
+  if (statusCode !== 503) return false;
+  return parseQuotaCooldown(errorBody) != null;
 }
 
 // ── Read connections from db.json (sync) ─────────────────────
@@ -548,6 +576,7 @@ module.exports = {
   isModelExhausted,
   getTokenSwapStrategy,
   parseQuotaCooldown,
+  shouldImmediateQuotaCooldown,
   markAccountUsed,
   getConnectionLabel,
   maskEmail,

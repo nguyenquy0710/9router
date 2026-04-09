@@ -154,6 +154,25 @@ describe("parseQuotaCooldown", () => {
     expect(pool.parseQuotaCooldown(body)).toBeNull();
   });
 
+  it("maps MODEL_CAPACITY_EXHAUSTED to a 1 minute cooldown", () => {
+    const body = JSON.stringify({
+      error: {
+        code: 503,
+        message: "No capacity available for model claude-sonnet-4-6 on the server",
+        details: [
+          { reason: "MODEL_CAPACITY_EXHAUSTED" }
+        ]
+      }
+    });
+    expect(pool.parseQuotaCooldown(body)).toBe(60_000);
+    expect(pool.shouldImmediateQuotaCooldown(503, body)).toBe(true);
+  });
+
+  it("does not force immediate cooldown for 429 without an explicit reset window", () => {
+    const body = JSON.stringify({ error: { message: "Quota exceeded" } });
+    expect(pool.shouldImmediateQuotaCooldown(429, body)).toBe(false);
+  });
+
   it("returns null for invalid JSON", () => {
     expect(pool.parseQuotaCooldown("not json")).toBeNull();
   });
