@@ -1,10 +1,10 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-9Router is a self-hosted AI routing gateway built on Next.js 16 + React 19. It acts as a local proxy between AI coding tools (Claude Code, Cursor, Codex, Gemini CLI, etc.) and 40+ upstream AI providers. It provides format translation (OpenAI <-> Claude <-> Gemini <-> etc.), multi-account fallback, quota tracking, and usage monitoring. The app exposes an OpenAI-compatible endpoint at `/v1/*` and a web dashboard at `/dashboard`.
+9Router is a self-hosted AI routing gateway built on Next.js 16 + React 19. It acts as a local proxy between AI coding tools (Codex, Cursor, Codex, Gemini CLI, etc.) and 40+ upstream AI providers. It provides format translation (OpenAI <-> Codex <-> Gemini <-> etc.), multi-account fallback, quota tracking, and usage monitoring. The app exposes an OpenAI-compatible endpoint at `/v1/*` and a web dashboard at `/dashboard`.
 
 ## Common Commands
 
@@ -61,7 +61,7 @@ Two categories of API routes:
 
 1. **Compatibility APIs** (consumed by CLI tools):
    - `/v1/chat/completions` — OpenAI-format chat (main entry point)
-   - `/v1/messages` — Anthropic Claude format
+   - `/v1/messages` — Anthropic Codex format
    - `/v1/responses` — OpenAI Responses API format
    - `/v1/embeddings`, `/v1/models`, `/v1beta/models`
    - URL rewrites in `next.config.mjs` map `/v1/*` → `/api/v1/*`
@@ -74,10 +74,10 @@ Two categories of API routes:
 
 ### Format Translation System (`open-sse/translator/`)
 
-Translates between provider-specific formats. Source format is auto-detected from the request endpoint and body shape (see `formats.js`). Supported formats: `openai`, `openai-responses`, `claude`, `gemini`, `vertex`, `codex`, `antigravity`, `kiro`, `cursor`, `ollama`.
+Translates between provider-specific formats. Source format is auto-detected from the request endpoint and body shape (see `formats.js`). Supported formats: `openai`, `openai-responses`, `Codex`, `gemini`, `vertex`, `codex`, `antigravity`, `kiro`, `cursor`, `ollama`.
 
-- `translator/request/` — Inbound translation (e.g., `openai-to-claude.js`)
-- `translator/response/` — Outbound translation (e.g., `claude-to-openai.js`)
+- `translator/request/` — Inbound translation (e.g., `openai-to-Codex.js`)
+- `translator/response/` — Outbound translation (e.g., `Codex-to-openai.js`)
 
 ### Provider Executors (`open-sse/executors/`)
 
@@ -126,7 +126,7 @@ Cloudflare Workers deployment for optional cloud sync relay. Has its own `wrangl
 - Tests live in `tests/unit/` and use Vitest v4
 - Vitest is installed in `/tmp/node_modules` to avoid conflicts with the root Next.js project's hoisting
 - Test config is at `tests/vitest.config.js` — it aliases `open-sse` to the local package
-- Current coverage: embeddings core, cloud worker handler, OAuth cursor auto-import, OpenAI-to-Claude translation, provider validation, translator request normalization
+- Current coverage: embeddings core, cloud worker handler, OAuth cursor auto-import, OpenAI-to-Codex translation, provider validation, translator request normalization
 
 ## CI/CD
 

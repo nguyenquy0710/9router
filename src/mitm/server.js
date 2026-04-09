@@ -4,12 +4,15 @@ const path = require("path");
 const dns = require("dns");
 const { promisify } = require("util");
 const { log, err } = require("./logger");
-const { TARGET_HOSTS, URL_PATTERNS, getToolForHost } = require("./config");
+const { TARGET_HOSTS, URL_PATTERNS, getToolForHost, isTargetHost } = require("./config");
 const { DATA_DIR, MITM_DIR } = require("./paths");
 const { isTokenSwapEnabled, getAllActiveConnections, triggerRefreshIfNeeded,
-        setCooldown, setModelCooldown, getTokenSwapStrategy,
-        parseQuotaCooldown, markAccountUsed } = require("./tokenPool");
+        forceRefreshConnection, setCooldown, setAuthCooldown, setModelCooldown,
+        recordStrike, recordModelStrike, clearStrikes, clearModelStrikes,
+        getTokenSwapStrategy,
+        parseQuotaCooldown, markAccountUsed, getConnectionLabel, getTokenSwapAvailabilitySummary } = require("./tokenPool");
 const { getCertForDomain } = require("./cert/generate");
+const { buildInputOnlyRequestDetail, createTokenSwapUsageObserver, generateDetailId } = require("./usageTracker");
 
 const DB_FILE = path.join(DATA_DIR, "db.json");
 const LOCAL_PORT = 443;
@@ -180,85 +183,187 @@ async function passthrough(req, res, bodyBuffer, onResponse) {
 // Unlike passthrough(), this checks upstream statusCode BEFORE
 // piping to client — enabling auto-retry on 429/503.
 
-async function tokenSwapForward(req, res, bodyBuffer, connections, model, strategy) {
+async function tokenSwapForward(req, res, bodyBuffer, connections, model, strategy, provider, requestStartTime) {
   const targetHost = (req.headers.host || TARGET_HOSTS[0]).split(":")[0];
   const targetIP = await resolveTargetIP(targetHost);
 
   for (let i = 0; i < connections.length; i++) {
-    const conn = connections[i];
-    triggerRefreshIfNeeded(conn);
+    const originalConn = connections[i];
+    let conn = await triggerRefreshIfNeeded(originalConn);
+    let authRefreshAttempted = false;
 
-    const label = conn.name && conn.email ? `${conn.name} <${conn.email}>` : conn.name || conn.email || conn.id.slice(0, 8);
-    const modelTag = model ? ` model=${model}` : "";
-    const posTag = connections.length > 1 ? ` [${i + 1}/${connections.length}]` : "";
-    const useTag = conn.consecutiveUseCount > 1 ? ` uses=${conn.consecutiveUseCount}` : "";
-    log(`🔑 [token-swap]${posTag} trying "${label}"${modelTag}${useTag}`);
+    while (true) {
+      const label = getConnectionLabel(conn);
+      const modelTag = model ? ` model=${model}` : "";
+      const posTag = connections.length > 1 ? ` [${i + 1}/${connections.length}]` : "";
+      const useTag = conn.consecutiveUseCount > 1 ? ` uses=${conn.consecutiveUseCount}` : "";
+      log(`🔑 [token-swap]${posTag} trying "${label}"${modelTag}${useTag}`);
 
-    const swappedHeaders = {
-      ...req.headers,
-      host: targetHost,
-      authorization: `Bearer ${conn.accessToken}`
-    };
+      const swappedHeaders = {
+        ...req.headers,
+        host: targetHost,
+        authorization: `Bearer ${conn.accessToken}`
+      };
 
-    try {
-      const result = await new Promise((resolve, reject) => {
-        const forwardReq = https.request({
-          hostname: targetIP,
-          port: 443,
-          path: req.url,
-          method: req.method,
-          headers: swappedHeaders,
-          servername: targetHost,
-          rejectUnauthorized: false
-        }, (forwardRes) => {
-          if (forwardRes.statusCode === 429 || forwardRes.statusCode === 503) {
-            // Buffer the short error body to parse cooldown duration
-            const chunks = [];
-            forwardRes.on("data", c => chunks.push(c));
-            forwardRes.on("end", () => {
-              const body = Buffer.concat(chunks).toString();
-              resolve({ retry: true, body, statusCode: forwardRes.statusCode });
-            });
-          } else {
-            // Success or non-quota error → pipe to client
-            resolve({ retry: false, response: forwardRes });
-          }
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const forwardReq = https.request({
+            hostname: targetIP,
+            port: 443,
+            path: req.url,
+            method: req.method,
+            headers: swappedHeaders,
+            servername: targetHost,
+            rejectUnauthorized: false
+          }, (forwardRes) => {
+            if (forwardRes.statusCode === 429 || forwardRes.statusCode === 503 || forwardRes.statusCode === 401) {
+              const chunks = [];
+              forwardRes.on("data", c => chunks.push(c));
+              forwardRes.on("end", () => {
+                const body = Buffer.concat(chunks).toString();
+                const retryType = forwardRes.statusCode === 401 ? "auth" : "quota";
+                resolve({ retry: true, retryType, body, headers: forwardRes.headers, statusCode: forwardRes.statusCode });
+              });
+            } else {
+              resolve({ retry: false, response: forwardRes });
+            }
+          });
+          forwardReq.on("error", reject);
+          if (bodyBuffer.length > 0) forwardReq.write(bodyBuffer);
+          forwardReq.end();
         });
-        forwardReq.on("error", reject);
-        if (bodyBuffer.length > 0) forwardReq.write(bodyBuffer);
-        forwardReq.end();
-      });
 
-      if (result.retry) {
-        const cooldownMs = parseQuotaCooldown(result.body);
-        const cdLabel = cooldownMs ? ` cooldown=${Math.ceil(cooldownMs / 60000)}m` : "";
-        if (strategy === "sticky" && model) {
-          // Sticky: mark only this account+model as exhausted, not the whole account
-          setModelCooldown(conn.id, model, cooldownMs);
-          log(`⚠️ [token-swap] "${label}" → ${result.statusCode} model=${model} quota exhausted${cdLabel}, trying next...`);
-        } else {
-          // Round-robin: put whole account on cooldown
-          setCooldown(conn.id, cooldownMs);
-          log(`⚠️ [token-swap] "${label}" → ${result.statusCode} account quota exhausted${cdLabel}, trying next...`);
+        if (result.retry && result.retryType === "quota") {
+          const cooldownMs = parseQuotaCooldown(result.body);
+          const cdLabel = cooldownMs ? ` cooldown=${Math.ceil(cooldownMs / 60000)}m` : "";
+          if (strategy === "sticky" && model) {
+            const locked = recordModelStrike(conn.id, model, cooldownMs);
+            log(`⚠️ [token-swap] "${label}" → ${result.statusCode} model=${model}${locked ? " LOCKED" : " strike"}${cdLabel}, trying next...`);
+          } else {
+            const locked = recordStrike(conn.id, cooldownMs);
+            log(`⚠️ [token-swap] "${label}" → ${result.statusCode}${locked ? " LOCKED" : " strike"}${cdLabel}, trying next...`);
+          }
+          break;
         }
-        continue;
-      }
 
-      const newCount = (conn.consecutiveUseCount || 0) + 1;
-      const successModelTag = model ? ` model=${model}` : "";
-      const successStrategyTag = strategy === "sticky" ? ` sticky(use #${newCount})` : ` rr`;
-      log(`✅ [token-swap] "${label}" → ${result.response.statusCode}${successModelTag}${successStrategyTag}`);
-      markAccountUsed(conn.id);
-      res.writeHead(result.response.statusCode, result.response.headers);
-      result.response.pipe(res);
-      return true;
-    } catch (e) {
-      err(`[token-swap] error for "${label}": ${e.message}`);
-      continue;
+        if (result.retry && result.retryType === "auth") {
+          const retryableAuth = isRetryableAuthFailure(result.statusCode, result.headers, result.body);
+          if (!retryableAuth) {
+            res.writeHead(result.statusCode, result.headers);
+            res.end(result.body);
+            return true;
+          }
+
+          if (!authRefreshAttempted && conn.refreshToken) {
+            authRefreshAttempted = true;
+            log(`⚠️ [token-swap] "${label}" → 401 invalid_token, forcing refresh...`);
+            const refreshResult = await forceRefreshConnection(conn);
+            conn = refreshResult.connection || conn;
+            if (refreshResult.refreshed) {
+              log(`↻ [token-swap] "${label}" refreshed, retrying same account...`);
+              continue;
+            }
+          }
+
+          setAuthCooldown(conn.id);
+          log(`⚠️ [token-swap] "${label}" → 401 invalid_token, trying next...`);
+          break;
+        }
+
+        const newCount = (conn.consecutiveUseCount || 0) + 1;
+        const statusCode = result.response.statusCode || 0;
+        const successModelTag = model ? ` model=${model}` : "";
+        const successStrategyTag = strategy === "sticky" ? ` sticky(use #${newCount})` : ` rr`;
+        log(`✅ [token-swap] "${label}" → ${statusCode}${successModelTag}${successStrategyTag}`);
+        // Clear strikes on success — previous 429s were likely false positives
+        clearStrikes(conn.id);
+        if (model) clearModelStrikes(conn.id, model);
+        markAccountUsed(conn.id);
+        res.writeHead(statusCode, result.response.headers);
+
+        const detailId = generateDetailId(model);
+        const inputOnlyDetail = buildInputOnlyRequestDetail({
+          detailId,
+          provider,
+          model,
+          connectionId: conn.id,
+          bodyBuffer
+        });
+        fetch("http://127.0.0.1:20128/api/internal/request-detail", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [INTERNAL_REQUEST_HEADER.name]: INTERNAL_REQUEST_HEADER.value
+          },
+          body: JSON.stringify(inputOnlyDetail)
+        }).catch((detailError) => {
+          err(`[token-swap] failed to create request detail for "${label}": ${detailError.message}`);
+        });
+
+        const usageObserver = createTokenSwapUsageObserver({
+          provider,
+          model,
+          connectionId: conn.id,
+          accountLabel: label,
+          bodyBuffer,
+          contentType: result.response.headers["content-type"] || "",
+          contentEncoding: result.response.headers["content-encoding"] || "",
+          statusCode,
+          detailRecord: inputOnlyDetail,
+          requestStartTime
+        });
+
+        result.response.on("data", (chunk) => {
+          usageObserver.onChunk(chunk);
+          res.write(chunk);
+        });
+        result.response.on("end", () => {
+          res.end();
+          usageObserver.onEnd().catch(() => {});
+        });
+        result.response.on("error", (streamError) => {
+          err(`[token-swap] upstream stream error for "${label}": ${streamError.message}`);
+          if (!res.writableEnded) res.end();
+        });
+        return true;
+      } catch (e) {
+        err(`[token-swap] error for "${label}": ${e.message}`);
+        break;
+      }
     }
   }
 
   // All accounts exhausted
+  return false;
+}
+
+function getHeaderValue(headers, name) {
+  const value = headers?.[String(name).toLowerCase()];
+  if (Array.isArray(value)) return value.join(", ");
+  return typeof value === "string" ? value : "";
+}
+
+function isRetryableAuthFailure(statusCode, headers, body) {
+  if (statusCode !== 401) return false;
+
+  const authHeader = getHeaderValue(headers, "www-authenticate").toLowerCase();
+  if (authHeader.includes("invalid_token")) return true;
+
+  try {
+    const parsed = JSON.parse(body || "{}");
+    const status = String(parsed?.error?.status || parsed?.status || "").toUpperCase();
+    const message = String(parsed?.error?.message || parsed?.message || "").toLowerCase();
+    if (status === "UNAUTHENTICATED") return true;
+    if (message.includes("invalid authentication credentials")) return true;
+    if (message.includes("invalid token")) return true;
+    if (message.includes("unauthenticated")) return true;
+  } catch {
+    const fallback = String(body || "").toLowerCase();
+    if (fallback.includes("invalid authentication credentials")) return true;
+    if (fallback.includes("invalid token")) return true;
+    if (fallback.includes("unauthenticated")) return true;
+  }
+
   return false;
 }
 
@@ -272,24 +377,38 @@ const server = https.createServer(sslOptions, async (req, res) => {
       return;
     }
 
+    const host = (req.headers.host || "").split(":")[0];
+    log(`📥 [request] ${req.method} ${host}${req.url}`);
+
+    const bodyCollectStart = Date.now();
     const bodyBuffer = await collectBodyRaw(req);
+    log(`📦 [request] body collected: ${bodyBuffer.length}B in ${Date.now() - bodyCollectStart}ms from ${host}`);
+
     if (bodyBuffer.length > 0) saveRequestLog(req.url, bodyBuffer);
 
     // Anti-loop: skip requests from 9Router
     if (req.headers[INTERNAL_REQUEST_HEADER.name] === INTERNAL_REQUEST_HEADER.value) {
+      // log(`🔁 [request] anti-loop skip: ${host}${req.url}`);
       return passthrough(req, res, bodyBuffer);
     }
 
     const tool = getToolForHost(req.headers.host);
-    if (!tool) return passthrough(req, res, bodyBuffer);
+    if (!tool) {
+      // log(`⏩ [request] no tool for host="${host}", passthrough`);
+      return passthrough(req, res, bodyBuffer);
+    }
 
     const patterns = URL_PATTERNS[tool] || [];
     const isChat = patterns.some(p => req.url.includes(p));
-    if (!isChat) return passthrough(req, res, bodyBuffer);
+    if (!isChat) {
+      // log(`⏩ [request] url="${req.url}" not a chat pattern for tool=${tool}, passthrough`);
+      return passthrough(req, res, bodyBuffer);
+    }
 
     // Extract model early — needed for sticky token-swap strategy and mitmAlias.
     // Cursor uses binary proto so model extraction is deferred to its handler.
     const model = tool !== "cursor" ? extractModel(req.url, bodyBuffer) : null;
+    log(`🧩 [request] tool=${tool} model="${model || "unknown"}" url=${req.url}`);
 
     // ── TOKEN SWAP: rotate auth tokens before mitmAlias ──────
     const swapProvider = TOOL_TO_PROVIDER[tool];
@@ -297,10 +416,13 @@ const server = https.createServer(sslOptions, async (req, res) => {
       const strategy = getTokenSwapStrategy();
       const poolConns = getAllActiveConnections(swapProvider, model);
       if (poolConns.length > 0) {
-        log(`🔑 [${tool}] token-swap: ${poolConns.length} account(s) available (strategy=${strategy}${model ? `, model=${model}` : ""})`);
-        const handled = await tokenSwapForward(req, res, bodyBuffer, poolConns, model, strategy);
+        const availability = getTokenSwapAvailabilitySummary(swapProvider, model);
+        log(`🔑 [${tool}] token-swap: ${availability.summaryText} (strategy=${strategy}${model ? `, model=${model}` : ""})`);
+        const handled = await tokenSwapForward(req, res, bodyBuffer, poolConns, model, strategy, swapProvider, bodyCollectStart);
         if (handled) return;
         log(`⚠️ [${tool}] token-swap: all accounts exhausted, falling through to original token`);
+      } else {
+        log(`⚠️ [token-swap] 0 active connections for provider=${swapProvider} model="${model || "any"}" — all on cooldown?`);
       }
     }
 
@@ -317,7 +439,7 @@ const server = https.createServer(sslOptions, async (req, res) => {
 
     const mappedModel = getMappedModel(tool, model);
     if (!mappedModel) {
-      log(`⏩ passthrough | no mapping | ${tool} | ${model || "unknown"}`);
+      // log(`⏩ passthrough | no mapping | ${tool} | ${model || "unknown"}`);
       return passthrough(req, res, bodyBuffer);
     }
 
@@ -340,6 +462,8 @@ server.on("error", (e) => {
 });
 
 const shutdown = () => server.close(() => process.exit(0));
+process.setMaxListeners(0);
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 if (process.platform === "win32") process.on("SIGBREAK", shutdown);
+

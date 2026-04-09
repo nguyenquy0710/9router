@@ -57,10 +57,16 @@ export default function MitmPageClient() {
   };
 
   useEffect(() => {
-    fetchConnections();
-    fetchApiKeys();
-    fetchAliases();
-    fetchCloudSettings();
+    const loadInitialData = async () => {
+      await Promise.all([
+        fetchConnections(),
+        fetchApiKeys(),
+        fetchAliases(),
+        fetchCloudSettings(),
+      ]);
+    };
+
+    loadInitialData();
   }, []);
 
   const getActiveProviders = () => connections.filter(c => c.isActive !== false);
@@ -111,6 +117,7 @@ export default function MitmPageClient() {
                 serverRunning={mitmStatus.running}
                 dnsActive={mitmStatus.dnsStatus?.[toolId] || false}
                 onToggle={(val) => setTokenSwapActive(val)}
+                onRefreshConnections={fetchConnections}
               />
             )}
           </Fragment>

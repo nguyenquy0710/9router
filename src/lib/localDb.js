@@ -12,7 +12,7 @@ const isCloud = typeof caches !== 'undefined' || typeof caches === 'object';
 
 // Get app name - fixed constant to avoid Windows path issues in standalone build
 function getAppName() {
-  return "9router";
+  return "n9router";
 }
 
 // Get user data directory based on platform
@@ -68,6 +68,7 @@ const defaultData = {
     outboundProxyEnabled: false,
     outboundProxyUrl: "",
     outboundNoProxy: "",
+    tokenSwapMaskEmails: false,
     mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
   },
   pricing: {} // NEW: pricing configuration
@@ -104,6 +105,7 @@ function cloneDefaultData() {
       outboundProxyEnabled: false,
       outboundProxyUrl: "",
       outboundNoProxy: "",
+      tokenSwapMaskEmails: false,
       mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
     },
     pricing: {},

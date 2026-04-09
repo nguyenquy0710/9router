@@ -1,60 +1,6 @@
-# Database files - NEVER publish
-data/
-**/data/
-**/db.json
+# This file exists so npm does not fall back to .gitignore (which excludes
+# .next/ and would strip .next/standalone/.next/ from the package).
+# package.json "files" is the main allowlist; we only exclude dangerous paths here.
 
-# Development
-src/
-docs/
-test/
-agents/
-scripts/
-worker/
-shared-sse/
-copilot-api/
-CLIProxyAPI/
-
-# Config files
-*.md
-!README.md
-.gitignore
-.env*
-jsconfig.json
-eslint.config.mjs
-postcss.config.mjs
-next.config.mjs
-tsconfig.json
-
-# Build artifacts that shouldn't be published
-.next/cache/
-.next/standalone/data/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Next.js may copy project-root .npmrc into standalone — never publish tokens.
+.next/standalone/.npmrc
