@@ -45,11 +45,44 @@ function getPassword(provided) {
 function checkIsAdmin() {
   if (!isWin) return true;
   try {
-    require("child_process").execSync("net session >nul 2>&1", { windowsHide: true });
-    return true;
+    return require("../../../../mitm/dns/dnsConfig").isWindowsAdmin();
   } catch {
     return false;
   }
+}
+
+function getErrorMessage(error, fallback) {
+  if (error?.message && String(error.message).trim()) return String(error.message).trim();
+  if (typeof error === "string" && error.trim()) return error.trim();
+  try {
+    const serialized = JSON.stringify(error);
+    if (serialized && serialized !== "{}") return serialized;
+  } catch {
+    // ignore
+  }
+  return fallback;
+}
+
+function logRouteError(label, error, context = {}) {
+  const payload = {
+    context,
+    name: error?.name || null,
+    message: getErrorMessage(error, `${label} failed`),
+    code: error?.code || null,
+    statusCode: error?.statusCode || null,
+    errno: error?.errno || null,
+    syscall: error?.syscall || null,
+    path: error?.path || null,
+    stack: error?.stack || null,
+    cause: error?.cause?.message || null,
+  };
+  console.error(`[antigravity-mitm] ${label} failed`, payload);
+}
+
+function jsonError(label, error, fallback, context = {}) {
+  logRouteError(label, error, context);
+  const status = Number(error?.statusCode) || Number(error?.status) || 500;
+  return NextResponse.json({ error: getErrorMessage(error, fallback) }, { status });
 }
 
 // GET - Full MITM status (server + per-tool DNS)
@@ -70,8 +103,7 @@ export async function GET() {
         DEFAULT_MITM_ROUTER_BASE,
     });
   } catch (error) {
-    console.log("Error getting MITM status:", error.message);
-    return NextResponse.json({ error: "Failed to get MITM status" }, { status: 500 });
+    return jsonError("get status", error, "Failed to get MITM status");
   }
 }
 
@@ -105,8 +137,7 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true, running: result.running, pid: result.pid });
   } catch (error) {
-    console.log("Error starting MITM server:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to start MITM server" }, { status: 500 });
+    return jsonError("start server", error, "Failed to start MITM server");
   }
 }
 
@@ -126,8 +157,7 @@ export async function DELETE(request) {
 
     return NextResponse.json({ success: true, running: false });
   } catch (error) {
-    console.log("Error stopping MITM server:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to stop MITM server" }, { status: 500 });
+    return jsonError("stop server", error, "Failed to stop MITM server");
   }
 }
 
@@ -146,6 +176,14 @@ export async function PATCH(request) {
     }
     if (!isWin && !pwd) {
       return NextResponse.json({ error: "Missing sudoPassword" }, { status: 400 });
+    }
+    if (isWin && (action === "enable" || action === "disable") && !checkIsAdmin()) {
+      const adminError = new Error(
+        "Windows DNS changes require Administrator privileges. Restart 9Router as Administrator and try again."
+      );
+      adminError.code = "WINDOWS_ADMIN_REQUIRED";
+      adminError.statusCode = 403;
+      throw adminError;
     }
 
     if (action === "enable") {
@@ -166,7 +204,10 @@ export async function PATCH(request) {
     const status = await getMitmStatus();
     return NextResponse.json({ success: true, dnsStatus: status.dnsStatus });
   } catch (error) {
-    console.error(`Error toggling DNS (${action || "unknown"}:${tool || "unknown"}):`, error.message);
-    return NextResponse.json({ error: error.message || "Failed to toggle DNS" }, { status: 500 });
+    return jsonError("toggle dns", error, "Failed to toggle DNS", {
+      tool: tool || null,
+      action: action || null,
+      platform: process.platform,
+    });
   }
 }

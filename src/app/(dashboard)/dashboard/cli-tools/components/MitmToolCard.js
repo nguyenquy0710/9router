@@ -27,6 +27,7 @@ export default function MitmToolCard({
 }) {
   const [loading, setLoading] = useState(false);
   const [warning, setWarning] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [sudoPassword, setSudoPassword] = useState("");
   const [pendingDnsAction, setPendingDnsAction] = useState(null);
@@ -37,11 +38,7 @@ export default function MitmToolCard({
 
   const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");
 
-  useEffect(() => {
-    if (isExpanded) loadSavedMappings();
-  }, [isExpanded]);
-
-  const loadSavedMappings = async () => {
+  const loadSavedMappings = useCallback(async () => {
     try {
       const res = await fetch(`/api/cli-tools/antigravity-mitm/alias?tool=${tool.id}`);
       if (res.ok) {
@@ -49,7 +46,11 @@ export default function MitmToolCard({
         if (Object.keys(data.aliases || {}).length > 0) setModelMappings(data.aliases);
       }
     } catch { /* ignore */ }
-  };
+  }, [tool.id]);
+
+  useEffect(() => {
+    if (isExpanded) loadSavedMappings();
+  }, [isExpanded, loadSavedMappings]);
 
   const saveMappings = useCallback(async (mappings) => {
     try {
@@ -96,14 +97,15 @@ export default function MitmToolCard({
   const doDnsAction = async (action, password) => {
     setLoading(true);
     setWarning(null);
+    setErrorMessage(null);
     try {
       const res = await fetch("/api/cli-tools/antigravity-mitm", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tool: tool.id, action, sudoPassword: password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to toggle DNS");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Failed to ${action} DNS`);
 
       if (action === "enable") {
         setWarning(`Restart ${tool.name} to apply changes`);
@@ -112,7 +114,9 @@ export default function MitmToolCard({
       setShowPasswordModal(false);
       setSudoPassword("");
       onDnsChange?.(data);
-    } catch { /* ignore */ } finally {
+    } catch (error) {
+      setErrorMessage(error.message || `Failed to ${action} DNS`);
+    } finally {
       setLoading(false);
       setPendingDnsAction(null);
     }
@@ -270,6 +274,12 @@ export default function MitmToolCard({
                   <span>{warning}</span>
                 </div>
               )}
+              {errorMessage && (
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded text-xs bg-red-500/10 text-red-600">
+                  <span className="material-symbols-outlined text-[14px]">error</span>
+                  <span>{errorMessage}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -400,4 +410,3 @@ function IdeLaunchAction() {
     </div>
   );
 }
-

@@ -48,15 +48,91 @@ function describeDnsError(error, context = {}) {
   return parts.join(" | ");
 }
 
+function buildWindowsAdminHint(hostsFile = HOSTS_FILE) {
+  return `Windows DNS changes require Administrator privileges. Restart 9Router as Administrator so it can update ${hostsFile} and flush the DNS cache.`;
+}
+
+function buildDnsOperationError(error, context = {}) {
+  const detail = describeDnsError(error, context);
+  const isWindowsLike = context.isWindows ?? IS_WIN;
+  if (isWindowsLike && (error?.code === "EACCES" || error?.code === "EPERM")) {
+    return `${detail} | hint=${buildWindowsAdminHint(context.hostsFile || HOSTS_FILE)}`;
+  }
+  return detail;
+}
+
+function isWindowsAdmin() {
+  if (!IS_WIN) return false;
+  try {
+    execSync("net session >nul 2>&1", { windowsHide: true, stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function createDnsFailure(message, extra = {}) {
+  const error = new Error(message);
+  Object.assign(error, extra);
+  return error;
+}
+
+function ensureWindowsDnsAccess(tool, action, hosts) {
+  if (!IS_WIN) return;
+
+  const context = {
+    action,
+    tool,
+    hostsFile: HOSTS_FILE,
+    hosts,
+  };
+
+  if (!isWindowsAdmin()) {
+    const message = `${action} blocked | tool=${tool} | hostsFile=${HOSTS_FILE} | reason=process-not-elevated | hint=${buildWindowsAdminHint(HOSTS_FILE)}`;
+    throw createDnsFailure(message, {
+      code: "WINDOWS_ADMIN_REQUIRED",
+      statusCode: 403,
+    });
+  }
+
+  try {
+    fs.accessSync(HOSTS_FILE, fs.constants.R_OK | fs.constants.W_OK);
+  } catch (error) {
+    const detail = buildDnsOperationError(error, context);
+    throw createDnsFailure(detail, {
+      code: error?.code === "EACCES" || error?.code === "EPERM" ? "WINDOWS_ADMIN_REQUIRED" : error?.code,
+      statusCode: error?.code === "EACCES" || error?.code === "EPERM" ? 403 : 500,
+    });
+  }
+}
+
+function verifyDnsEntriesPresent(tool, expectedPresent) {
+  const hosts = TOOL_HOSTS[tool] || [];
+  const hostsContent = fs.readFileSync(HOSTS_FILE, "utf8");
+  const actualPresent = hosts.every((host) => hostsContent.includes(host));
+  if (actualPresent !== expectedPresent) {
+    const state = expectedPresent ? "present" : "absent";
+    throw createDnsFailure(
+      `DNS verification failed | tool=${tool} | hostsFile=${HOSTS_FILE} | expected=${state} | hosts=${hosts.join(", ")}`
+    );
+  }
+}
+
 function flushWindowsDns() {
   try {
+    log("🌐 Windows DNS: flushing resolver cache...");
     execSync("ipconfig /flushdns", {
       windowsHide: true,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
+    log("🌐 Windows DNS: resolver cache flushed");
   } catch (error) {
-    throw new Error(describeDnsError(error, { action: "Failed to flush Windows DNS cache" }));
+    const detail = buildDnsOperationError(error, { action: "Failed to flush Windows DNS cache", hostsFile: HOSTS_FILE });
+    throw createDnsFailure(detail, {
+      code: error?.code,
+      statusCode: error?.code === "EACCES" || error?.code === "EPERM" ? 403 : 500,
+    });
   }
 }
 
@@ -198,20 +274,23 @@ async function addDNSEntry(tool, sudoPassword) {
   const entries = entriesToAdd.map(h => `127.0.0.1 ${h}`).join("\n");
 
   try {
+    log(`🌐 DNS ${tool}: enabling (${entriesToAdd.join(", ")})`);
     if (IS_WIN) {
-      // Process already has admin rights — edit hosts file directly
+      ensureWindowsDnsAccess(tool, "Enable Windows DNS override", entriesToAdd);
       const toAppend = entriesToAdd.map(h => `127.0.0.1 ${h}`).join("\r\n") + "\r\n";
+      log(`🌐 DNS ${tool}: appending entries to ${HOSTS_FILE}`);
       fs.appendFileSync(HOSTS_FILE, toAppend, "utf8");
       flushWindowsDns();
+      verifyDnsEntriesPresent(tool, true);
     } else {
       await execWithPassword(`echo "${entries}" >> ${HOSTS_FILE}`, sudoPassword);
       await flushDNS(sudoPassword);
     }
-    log(`🌐 DNS ${tool}: ✅ added ${entriesToAdd.join(", ")}`);
+    log(`🌐 DNS ${tool}: ✅ added ${entriesToAdd.join(", ")} (hosts=${HOSTS_FILE})`);
   } catch (error) {
     const detail = error.message?.includes("incorrect password")
       ? "Wrong sudo password"
-      : describeDnsError(error, {
+      : buildDnsOperationError(error, {
           action: "Failed to add DNS entry",
           tool,
           hostsFile: HOSTS_FILE,
@@ -236,12 +315,15 @@ async function removeDNSEntry(tool, sudoPassword) {
   }
 
   try {
+    log(`🌐 DNS ${tool}: disabling (${entriesToRemove.join(", ")})`);
     if (IS_WIN) {
-      // Process already has admin rights — edit hosts file directly
+      ensureWindowsDnsAccess(tool, "Disable Windows DNS override", entriesToRemove);
       const content = fs.readFileSync(HOSTS_FILE, "utf8");
       const filtered = content.split(/\r?\n/).filter(l => !entriesToRemove.some(h => l.includes(h))).join("\r\n");
+      log(`🌐 DNS ${tool}: rewriting ${HOSTS_FILE} without ${entriesToRemove.join(", ")}`);
       fs.writeFileSync(HOSTS_FILE, filtered, "utf8");
       flushWindowsDns();
+      verifyDnsEntriesPresent(tool, false);
     } else {
       for (const host of entriesToRemove) {
         const sedCmd = IS_MAC
@@ -251,11 +333,11 @@ async function removeDNSEntry(tool, sudoPassword) {
       }
       await flushDNS(sudoPassword);
     }
-    log(`🌐 DNS ${tool}: ✅ removed ${entriesToRemove.join(", ")}`);
+    log(`🌐 DNS ${tool}: ✅ removed ${entriesToRemove.join(", ")} (hosts=${HOSTS_FILE})`);
   } catch (error) {
     const detail = error.message?.includes("incorrect password")
       ? "Wrong sudo password"
-      : describeDnsError(error, {
+      : buildDnsOperationError(error, {
           action: "Failed to remove DNS entry",
           tool,
           hostsFile: HOSTS_FILE,
@@ -289,4 +371,8 @@ module.exports = {
   executeElevatedPowerShell,
   checkDNSEntry,
   checkAllDNSStatus,
+  buildWindowsAdminHint,
+  buildDnsOperationError,
+  describeDnsError,
+  isWindowsAdmin,
 };

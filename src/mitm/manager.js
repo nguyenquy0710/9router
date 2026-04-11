@@ -615,23 +615,42 @@ async function stopServer(sudoPassword) {
  * Enable DNS for a specific tool (requires server running)
  */
 async function enableToolDNS(tool, sudoPassword) {
+  log(`🌐 DNS ${tool}: enable requested (platform=${process.platform})`);
   const status = await getMitmStatus();
   if (!status.running) throw new Error("MITM server is not running. Start the server first.");
-  
+  log(`🌐 DNS ${tool}: pre-check running=${status.running} active=${!!status.dnsStatus?.[tool]}`);
+
   // Use cached password if not provided
   const password = sudoPassword || getCachedPassword() || await loadEncryptedPassword();
-  await addDNSEntry(tool, password);
-  return { success: true };
+  try {
+    await addDNSEntry(tool, password);
+  } catch (error) {
+    err(`DNS ${tool}: enable failed in manager — ${error?.message || String(error)}`);
+    throw error;
+  }
+
+  const updatedStatus = checkAllDNSStatus();
+  log(`🌐 DNS ${tool}: post-check active=${!!updatedStatus[tool]}`);
+  return { success: true, dnsStatus: updatedStatus };
 }
 
 /**
  * Disable DNS for a specific tool
  */
 async function disableToolDNS(tool, sudoPassword) {
+  log(`🌐 DNS ${tool}: disable requested (platform=${process.platform})`);
   // Use cached password if not provided
   const password = sudoPassword || getCachedPassword() || await loadEncryptedPassword();
-  await removeDNSEntry(tool, password);
-  return { success: true };
+  try {
+    await removeDNSEntry(tool, password);
+  } catch (error) {
+    err(`DNS ${tool}: disable failed in manager — ${error?.message || String(error)}`);
+    throw error;
+  }
+
+  const updatedStatus = checkAllDNSStatus();
+  log(`🌐 DNS ${tool}: post-check active=${!!updatedStatus[tool]}`);
+  return { success: true, dnsStatus: updatedStatus };
 }
 
 /**
