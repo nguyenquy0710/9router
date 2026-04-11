@@ -50,10 +50,6 @@ function getAccountDisplay(acc, maskEmails) {
   return acc.name || acc.id.slice(0, 16);
 }
 
-function getStickyLimitForTool(tool) {
-  return tool?.stickyRoundRobinLimit || 3;
-}
-
 function getAccountTypeBadgeVariant(accountType) {
   if (accountType === "Ultra") return "warning";
   if (accountType === "Pro") return "primary";
@@ -61,7 +57,7 @@ function getAccountTypeBadgeVariant(accountType) {
   return "default";
 }
 
-function getPreferredAccountId(accounts, strategy, stickyLimit) {
+function getPreferredAccountId(accounts, strategy) {
   if (!accounts || accounts.length === 0) return null;
   if (accounts.length === 1) return accounts[0].id;
 
@@ -74,12 +70,6 @@ function getPreferredAccountId(accounts, strategy, stickyLimit) {
 
   if (strategy === "sticky") {
     return byNewest[0]?.id || null;
-  }
-
-  const current = byNewest[0];
-  const currentCount = current?.consecutiveUseCount || 0;
-  if (current?.lastUsedAt && currentCount < stickyLimit) {
-    return current.id;
   }
 
   const byOldest = [...accounts].sort((a, b) => {
@@ -245,8 +235,7 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
   );
   const activeCount = activeAccounts.length;
   const activeAccountsKey = activeAccounts.map((acc) => acc.id).join("|");
-  const stickyLimit = getStickyLimitForTool(tool);
-  const preferredAccountId = getPreferredAccountId(activeAccounts, strategy, stickyLimit);
+  const preferredAccountId = getPreferredAccountId(activeAccounts, strategy);
 
   // Auto-fetch quotas when enabled and accounts available
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -363,7 +352,7 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
     setTogglingAccountId(null);
   };
 
-  const resetAccountStreak = async (accountId) => {
+  const resetAccountRecency = async (accountId) => {
     if (!accountId || resettingAccountId || resettingAll || togglingAccountId) return;
     setResettingAccountId(accountId);
     try {
@@ -372,7 +361,6 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lastUsedAt: null,
-          consecutiveUseCount: 0,
         }),
       });
       if (res.ok) {
@@ -382,7 +370,7 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
     setResettingAccountId(null);
   };
 
-  const resetAllStreaks = async () => {
+  const resetAllRecency = async () => {
     if (resettingAll || resettingAccountId || togglingAccountId || providerAccounts.length === 0) return;
     setResettingAll(true);
     try {
@@ -392,7 +380,6 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             lastUsedAt: null,
-            consecutiveUseCount: 0,
           }),
         })
       )));
@@ -491,7 +478,7 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
             <p className="text-[10px] text-text-muted px-0.5">
               {strategy === "sticky"
                 ? "Stays on the same account until its quota is exhausted for the requested model, then switches. Optimizes session-level token cache."
-                : "Rotates accounts after each session (sticky round-robin). Distributes load evenly across the pool."}
+                : "Chooses the least recently used eligible account first. Each successful request updates that account's last-used time."}
             </p>
           </div>
 
@@ -539,21 +526,21 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
                     <span className="material-symbols-outlined text-[12px]">refresh</span>
                   </button>
                 )}
-                {providerAccounts.length > 0 && (
+                {strategy === "round-robin" && providerAccounts.length > 0 && (
                   <button
-                    onClick={resetAllStreaks}
+                    onClick={resetAllRecency}
                     disabled={resettingAll || !!resettingAccountId}
-                    className="text-[10px] text-text-muted hover:text-primary disabled:opacity-50 flex items-center gap-0.5 transition-colors"
-                    title="Reset all streak counts"
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-[10px] font-medium text-text-main hover:border-border-alt hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Clear last-used timestamps for all pool accounts"
                   >
                     <span className="material-symbols-outlined text-[12px]">restart_alt</span>
-                    Reset all
+                    Reset order
                   </button>
                 )}
               </div>
             </div>
             <p className="text-[10px] text-text-muted px-0.5">
-              Sticky round robin keeps the current account until its streak reaches {stickyLimit}, then rotates to the least recently used account.
+              Round robin uses least-recently-used ordering. Accounts with no usage timestamp are tried first, then older timestamps rotate ahead of newer ones.
             </p>
             <div className="flex items-center justify-between gap-3 px-2 py-2 rounded-lg border border-border bg-surface-alt/40">
               <div className="min-w-0">
@@ -614,19 +601,21 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
                         </div>
                         <div className="mt-1 flex items-center gap-2 flex-wrap text-[10px] text-text-muted">
                           <span>Priority #{acc.priority ?? "-"}</span>
-                          <span>Streak {acc.consecutiveUseCount || 0}/{stickyLimit}</span>
                           {acc.lastUsedAt && <span>Last used {new Date(acc.lastUsedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <button
-                          onClick={() => resetAccountStreak(acc.id)}
-                          disabled={resettingAll || togglingAccountId === acc.id || resettingAccountId === acc.id}
-                          className="text-[10px] text-text-muted hover:text-primary disabled:opacity-50 transition-colors"
-                          title="Reset this account streak"
-                        >
-                          {resettingAccountId === acc.id ? "..." : "Reset Streak"}
-                        </button>
+                        {strategy === "round-robin" && (
+                          <button
+                            onClick={() => resetAccountRecency(acc.id)}
+                            disabled={resettingAll || togglingAccountId === acc.id || resettingAccountId === acc.id}
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-[10px] font-medium text-text-main hover:border-border-alt hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Clear this account's last-used timestamp"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">restart_alt</span>
+                            {resettingAccountId === acc.id ? "..." : "Reset Order"}
+                          </button>
+                        )}
                         <Toggle
                           size="sm"
                           checked={acc.isActive !== false}

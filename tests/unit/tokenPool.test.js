@@ -6,7 +6,7 @@
  *  - Quota cooldown parser (Antigravity error format)
  *  - getActiveConnections filtering (isActive, accessToken, expiry, cooldown)
  *  - isTokenSwapEnabled
- *  - getNextConnection / round-robin
+ *  - getNextConnection / LRU round-robin
  *  - getAllActiveConnections
  *  - triggerRefreshIfNeeded (awaits refresh and reloads persisted token)
  */
@@ -102,17 +102,17 @@ describe("setCooldown / isInCooldown", () => {
     vi.useRealTimers();
   });
 
-  it("uses DEFAULT_COOLDOWN_MS (5min) when durationMs is null/undefined", () => {
+  it("uses DEFAULT_COOLDOWN_MS (2min) when durationMs is null/undefined", () => {
     vi.useFakeTimers();
     const conn = makeConn();
     fs.writeFileSync(tmp.dbPath, JSON.stringify({ providerConnections: [conn] }));
     pool.setCooldown(conn.id, null); // triggers default
     expect(pool.getAllActiveConnections("antigravity")).toHaveLength(0);
 
-    vi.advanceTimersByTime(4 * 60 * 1000); // 4 min — still in cooldown
+    vi.advanceTimersByTime(60 * 1000); // 1 min — still in cooldown
     expect(pool.getAllActiveConnections("antigravity")).toHaveLength(0);
 
-    vi.advanceTimersByTime(2 * 60 * 1000); // total 6 min — expired
+    vi.advanceTimersByTime(2 * 60 * 1000); // total 3 min — expired
     expect(pool.getAllActiveConnections("antigravity")).toHaveLength(1);
     vi.useRealTimers();
   });
@@ -389,9 +389,9 @@ describe("isTokenSwapEnabled", () => {
   });
 });
 
-// ── getNextConnection (round-robin) ─────────────────────────────────────────
+// ── getNextConnection (least-recently-used round-robin) ─────────────────────
 
-describe("getNextConnection — round-robin", () => {
+describe("getNextConnection — least-recently-used round-robin", () => {
   let tmp, pool;
   beforeEach(() => {
     tmp = createTempDb();
@@ -412,23 +412,44 @@ describe("getNextConnection — round-robin", () => {
     expect(pool.getNextConnection("antigravity").id).toBe("only");
   });
 
-  it("rotates round-robin across multiple connections", () => {
-    const c1 = makeConn({ id: "c1", priority: 1 });
-    const c2 = makeConn({ id: "c2", priority: 2 });
-    const c3 = makeConn({ id: "c3", priority: 3 });
+  it("selects the least recently used connection first", () => {
+    const c1 = makeConn({ id: "c1", priority: 1, lastUsedAt: "2026-04-11T09:00:00.000Z" });
+    const c2 = makeConn({ id: "c2", priority: 2, lastUsedAt: "2026-04-11T08:00:00.000Z" });
+    const c3 = makeConn({ id: "c3", priority: 3, lastUsedAt: "2026-04-11T07:00:00.000Z" });
     fs.writeFileSync(tmp.dbPath, JSON.stringify({ providerConnections: [c1, c2, c3] }));
 
-    const ids = [
-      pool.getNextConnection("antigravity").id,
-      pool.getNextConnection("antigravity").id,
-      pool.getNextConnection("antigravity").id,
-      pool.getNextConnection("antigravity").id, // wraps back to first
-    ];
-    // Round-robin: 0, 1, 2, 0, ...
-    expect(ids[0]).toBe("c1");
-    expect(ids[1]).toBe("c2");
-    expect(ids[2]).toBe("c3");
-    expect(ids[3]).toBe("c1");
+    expect(pool.getNextConnection("antigravity").id).toBe("c3");
+  });
+
+  it("prefers never-used accounts before previously used ones", () => {
+    const fresh = makeConn({ id: "fresh", priority: 3, lastUsedAt: null });
+    const older = makeConn({ id: "older", priority: 2, lastUsedAt: "2026-04-11T08:00:00.000Z" });
+    const newer = makeConn({ id: "newer", priority: 1, lastUsedAt: "2026-04-11T09:00:00.000Z" });
+    fs.writeFileSync(tmp.dbPath, JSON.stringify({ providerConnections: [newer, older, fresh] }));
+
+    expect(pool.getNextConnection("antigravity").id).toBe("fresh");
+  });
+
+  it("advances naturally after markAccountUsed updates lastUsedAt", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-11T10:00:00.000Z"));
+
+    const c1 = makeConn({ id: "c1", priority: 1, lastUsedAt: "2026-04-11T07:00:00.000Z" });
+    const c2 = makeConn({ id: "c2", priority: 2, lastUsedAt: "2026-04-11T08:00:00.000Z" });
+    const c3 = makeConn({ id: "c3", priority: 3, lastUsedAt: "2026-04-11T09:00:00.000Z" });
+    fs.writeFileSync(tmp.dbPath, JSON.stringify({ providerConnections: [c1, c2, c3] }));
+
+    expect(pool.getNextConnection("antigravity").id).toBe("c1");
+
+    pool.markAccountUsed("c1");
+
+    const db = JSON.parse(fs.readFileSync(tmp.dbPath, "utf-8"));
+    const updated = db.providerConnections.find((conn) => conn.id === "c1");
+    expect(updated.lastUsedAt).toBeTruthy();
+    expect(updated.consecutiveUseCount).toBeUndefined();
+
+    expect(pool.getNextConnection("antigravity").id).toBe("c2");
+    vi.useRealTimers();
   });
 
   it("skips cooldown accounts in round-robin", () => {

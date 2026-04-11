@@ -198,8 +198,8 @@ async function tokenSwapForward(req, res, bodyBuffer, connections, model, strate
       const label = getConnectionLabel(conn);
       const modelTag = model ? ` model=${model}` : "";
       const posTag = connections.length > 1 ? ` [${i + 1}/${connections.length}]` : "";
-      const useTag = conn.consecutiveUseCount > 1 ? ` uses=${conn.consecutiveUseCount}` : "";
-      log(`🔑 [token-swap]${posTag} trying "${label}"${modelTag}${useTag}`);
+      const recencyTag = conn.lastUsedAt ? ` lastUsed=${conn.lastUsedAt}` : " lastUsed=never";
+      log(`🔑 [token-swap]${posTag} trying "${label}"${modelTag}${recencyTag}`);
 
       const swappedHeaders = {
         ...req.headers,
@@ -293,10 +293,9 @@ async function tokenSwapForward(req, res, bodyBuffer, connections, model, strate
           break;
         }
 
-        const newCount = (conn.consecutiveUseCount || 0) + 1;
         const statusCode = result.response.statusCode || 0;
         const successModelTag = model ? ` model=${model}` : "";
-        const successStrategyTag = strategy === "sticky" ? ` sticky(use #${newCount})` : ` rr`;
+        const successStrategyTag = strategy === "sticky" ? " sticky" : " rr-lru";
         log(`✅ [token-swap] "${label}" → ${statusCode}${successModelTag}${successStrategyTag}`);
         // Clear strikes on success — previous 429s were likely false positives
         clearStrikes(conn.id);

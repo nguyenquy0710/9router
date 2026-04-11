@@ -1,6 +1,6 @@
 /**
  * Token Swap Pool — reads providerConnections from db.json,
- * provides round-robin rotation with cooldown management.
+ * provides token rotation with cooldown management.
  *
  * Runs in MITM server process (CJS, separate from Next.js).
  */
@@ -24,8 +24,6 @@ const authCooldownMap = {};    // { [connectionId]: expiresTimestamp } invalid_t
 const modelCooldownMap = {};   // { [connectionId]: { [model]: expiresTimestamp } }
 const strikeMap = {};          // { [connectionId]: consecutiveHitCount }
 const modelStrikeMap = {};     // { [connectionId]: { [model]: consecutiveHitCount } }
-const rrState = {};            // { [provider]: roundRobinIndex }
-
 // ── Strike + cooldown management ─────────────────────────────
 // Upstream often returns false-positive 429s. Instead of locking
 // an account on the first hit, we count consecutive strikes.
@@ -395,16 +393,18 @@ function isTokenSwapEnabled(provider) {
 }
 
 function getNextConnection(provider) {
-  const connections = getActiveConnections(provider);
+  const connections = getAllActiveConnections(provider);
   if (connections.length === 0) return null;
+
+  const selected = connections[0];
+  const strategy = getTokenSwapStrategy();
   if (connections.length === 1) {
-    log(`🎯 [token-pool] selected: "${getConnectionLabel(connections[0])}" (only account)`);
-    return connections[0];
+    log(`🎯 [token-pool] selected: "${getConnectionLabel(selected)}" (only account)`);
+    return selected;
   }
-  const idx = (rrState[provider] || 0) % connections.length;
-  rrState[provider] = idx + 1;
-  const selected = connections[idx];
-  log(`🎯 [token-pool] round-robin[${idx}/${connections.length}]: "${getConnectionLabel(selected)}"`);
+
+  const lastUsedTag = selected.lastUsedAt ? ` lastUsed=${selected.lastUsedAt}` : " lastUsed=never";
+  log(`🎯 [token-pool] ${strategy}[next/${connections.length}]: "${getConnectionLabel(selected)}"${lastUsedTag}`);
   return selected;
 }
 
@@ -441,34 +441,10 @@ function getAllActiveConnections(provider, model) {
     });
   }
 
-  const roundRobinConnections = hardAvailable;
-
-  // Round-robin strategy: sticky round-robin matching the main routing engine
-  // (src/sse/services/auth.js). Least-recently-used account starts each request.
-  const stickyLimit = getStickyLimit(provider);
-
-  const byRecency = [...roundRobinConnections].sort((a, b) => {
-    if (!a.lastUsedAt && !b.lastUsedAt) return (a.priority || 999) - (b.priority || 999);
-    if (!a.lastUsedAt) return 1;
-    if (!b.lastUsedAt) return -1;
-    return new Date(b.lastUsedAt) - new Date(a.lastUsedAt);
-  });
-  const current = byRecency[0];
-  const currentCount = current?.consecutiveUseCount || 0;
-
-  if (current?.lastUsedAt && currentCount < stickyLimit) {
-    // Keep current account first, rest sorted oldest-first for fallback
-    const rest = roundRobinConnections.filter(c => c.id !== current.id).sort((a, b) => {
-      if (!a.lastUsedAt && !b.lastUsedAt) return (a.priority || 999) - (b.priority || 999);
-      if (!a.lastUsedAt) return -1;
-      if (!b.lastUsedAt) return 1;
-      return new Date(a.lastUsedAt) - new Date(b.lastUsedAt);
-    });
-    return [current, ...rest];
-  }
-
-  // Rotate: least-recently-used first
-  return [...roundRobinConnections].sort((a, b) => {
+  // Round-robin strategy: least-recently-used first. Successful requests
+  // update lastUsedAt, so the next selection naturally advances without
+  // extra streak state or in-memory round-robin indexes.
+  return [...hardAvailable].sort((a, b) => {
     if (!a.lastUsedAt && !b.lastUsedAt) return (a.priority || 999) - (b.priority || 999);
     if (!a.lastUsedAt) return -1;
     if (!b.lastUsedAt) return 1;
@@ -476,19 +452,8 @@ function getAllActiveConnections(provider, model) {
   });
 }
 
-function getStickyLimit(provider) {
-  try {
-    if (!fs.existsSync(DB_FILE)) return 3;
-    const db = JSON.parse(fs.readFileSync(DB_FILE, "utf-8"));
-    const settings = db.settings || {};
-    const providerOverride = (settings.providerStrategies || {})[provider] || {};
-    return providerOverride.stickyRoundRobinLimit || settings.stickyRoundRobinLimit || 3;
-  } catch { return 3; }
-}
-
-// ── Mark account as used (update lastUsedAt + consecutiveUseCount in db.json) ──
-// This drives the sticky round-robin: after stickyLimit consecutive uses,
-// getAllActiveConnections will rotate to the next least-recently-used account.
+// ── Mark account as used (update lastUsedAt in db.json) ──
+// Round-robin selection is based on least-recently-used ordering.
 
 function markAccountUsed(connId) {
   try {
@@ -498,14 +463,10 @@ function markAccountUsed(connId) {
     const conn = connections.find(c => c.id === connId);
     if (!conn) return;
 
-    const now = new Date().toISOString();
-    const wasAlreadyCurrent = conn.lastUsedAt &&
-      (Date.now() - new Date(conn.lastUsedAt).getTime()) < 60000;
-
-    conn.lastUsedAt = now;
-    conn.consecutiveUseCount = wasAlreadyCurrent
-      ? (conn.consecutiveUseCount || 0) + 1
-      : 1;
+    conn.lastUsedAt = new Date().toISOString();
+    if ("consecutiveUseCount" in conn) {
+      delete conn.consecutiveUseCount;
+    }
 
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
   } catch (e) {
