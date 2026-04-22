@@ -34,7 +34,9 @@ export default function MitmToolCard({
   const [modalOpen, setModalOpen] = useState(false);
   const [currentEditingAlias, setCurrentEditingAlias] = useState(null);
 
-  const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");
+  // const isWindows = typeof navigator !== "undefined" && navigator.userAgent?.includes("Windows");
+  // fixed #694: Detect the SERVER's OS, not the browser's — fixes WSL2 + Windows browser false-positive
+  const isWindows = typeof window !== "undefined" && window._9r_serverOS === "win32";
 
   useEffect(() => {
     if (isExpanded) loadSavedMappings();
