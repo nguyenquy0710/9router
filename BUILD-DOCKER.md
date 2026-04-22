@@ -194,3 +194,13 @@ docker tag nqdev/9router:0.3.96 nqdev/9router:latest
 docker push nqdev/9router:0.3.96
 docker push nqdev/9router:latest
 ```
+
+### Fixbug and build image
+
+```powershell
+# Build + xem log chi tiết
+$env:VERSION="0.3.96.001"; docker compose -f .\docker\docker-compose.yml build --progress=plain
+
+# Push image lên Docker Hub
+docker push nqdev/9router:0.3.96.001
+```
