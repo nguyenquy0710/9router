@@ -199,8 +199,8 @@ docker push nqdev/9router:latest
 
 ```powershell
 # Build + xem log chi tiết
-$env:VERSION="0.3.96.001"; docker compose -f .\docker\docker-compose.yml build --progress=plain
+$env:VERSION="0.3.96.002"; docker compose -f .\docker\docker-compose.yml build --progress=plain
 
 # Push image lên Docker Hub
-docker push nqdev/9router:0.3.96.001
+docker push nqdev/9router:0.3.96.002
 ```
