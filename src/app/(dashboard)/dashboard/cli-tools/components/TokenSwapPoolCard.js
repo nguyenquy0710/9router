@@ -99,6 +99,7 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
   const [accountRetryOverrides, setAccountRetryOverrides] = useState({}); // local optimistic state for per-account 503 retry inputs
   const [togglingAccountId, setTogglingAccountId] = useState(null);
   const [refreshingQuotaId, setRefreshingQuotaId] = useState(null);
+  const [refreshingAllQuotas, setRefreshingAllQuotas] = useState(false);
   const [quotas, setQuotas] = useState({}); // { [connId]: { quotas: [], error: string|null, loading: bool, accountType?: string|null } }
   const quotaCacheRef = useRef({}); // { [connId]: { data: parsed, error, ts: number, accountType?: string|null } }
   const retryCount503TimerRef = useRef(null); // debounce timer for global 503 retry save
@@ -449,7 +450,7 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
   };
 
   const toggleAccountActive = async (accountId, nextActive) => {
-    if (!accountId || togglingAccountId || resettingAll || resettingAccountId) return;
+    if (!accountId || togglingAccountId || refreshingQuotaId) return;
     setTogglingAccountId(accountId);
     try {
       const res = await fetch(`/api/providers/${accountId}`, {
@@ -465,12 +466,21 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
   };
 
   const refreshAccountQuota = async (acc) => {
-    if (!acc?.id || refreshingQuotaId || togglingAccountId) return;
+    if (!acc?.id || refreshingQuotaId || refreshingAllQuotas || togglingAccountId) return;
     setRefreshingQuotaId(acc.id);
     // Bust cache for this account and force a fresh fetch
     delete quotaCacheRef.current[acc.id];
     await fetchQuotas([acc], true);
     setRefreshingQuotaId(null);
+  };
+
+  const refreshAllQuotas = async () => {
+    if (refreshingAllQuotas || !!refreshingQuotaId || activeAccounts.length === 0) return;
+    setRefreshingAllQuotas(true);
+    // Bust cache for all active accounts then force-fetch in parallel
+    activeAccounts.forEach((acc) => { delete quotaCacheRef.current[acc.id]; });
+    await fetchQuotas(activeAccounts, true);
+    setRefreshingAllQuotas(false);
   };
 
 
@@ -659,7 +669,17 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
                   </span>
                 )}
               </div>
-              
+              {activeAccounts.length > 0 && (
+                <button
+                  onClick={refreshAllQuotas}
+                  disabled={refreshingAllQuotas || !!refreshingQuotaId}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-[10px] font-medium text-text-main hover:border-border-alt hover:bg-surface-alt disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Refresh quotas for all pool accounts"
+                >
+                  <span className={`material-symbols-outlined text-[12px] ${refreshingAllQuotas ? "animate-spin" : ""}`}>refresh</span>
+                  {refreshingAllQuotas ? "Refreshing…" : "Refresh All"}
+                </button>
+              )}
             </div>
             <p className="text-[10px] text-text-muted px-0.5">
               Round robin uses least-recently-used ordering. Accounts with no usage timestamp are tried first, then older timestamps rotate ahead of newer ones.
@@ -687,7 +707,6 @@ export default function TokenSwapPoolCard({ tool, connections = [], serverRunnin
                 className="flex items-center gap-1.5 shrink-0"
                 title="Global 503 retry count (0–20). Retry &quot;high traffic&quot; errors on same account before switching. Each account row can override this."
               >
-                <span className="material-symbols-outlined text-[13px] text-text-muted shrink-0">refresh</span>
                 <span className="text-[11px] text-text-muted whitespace-nowrap">503 retries</span>
                 <input
                   type="number"
