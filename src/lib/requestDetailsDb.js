@@ -2,6 +2,7 @@ import { Low } from "lowdb";
 import { JSONFile } from "lowdb/node";
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 import { DATA_DIR } from "@/lib/dataDir.js";
 
 const isCloud = typeof caches !== "undefined" && typeof caches === "object";
