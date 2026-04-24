@@ -199,7 +199,7 @@ docker push nqdev/9router:latest
 
 ```powershell
 # Inline build, tag, and push Docker images
-$env:VERSION="0.4.2"
+$env:VERSION="0.4.2.001"
 
 # Build image
 docker-compose -f .\docker\docker-compose.yml build --no-cache
