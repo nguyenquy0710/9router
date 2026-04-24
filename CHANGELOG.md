@@ -1,6 +1,21 @@
 # Changelog
 
-All notable changes to **n9router** will be documented in this file.
+## v0.4.15 (2026-04-24)
+
+### Features
+- Add Azure OpenAI provider support
+- Add built-in Volcengine Ark provider support (#741)
+- Add GPT 5.5 model
+- Add Hermes CLI tool with settings management and integration
+- Add in-app version update mechanism (appUpdater + /api/version/update)
+
+### Improvements
+- Strengthen CLI token validation for enhanced security
+- Enhance Sidebar layout for CLI tools
+- Update executors and runtime config
+
+### Fixes
+- Enhance retry logic and configuration for HTTP status codes
 
 ## v0.4.14 (2026-04-23)
 
