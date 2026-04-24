@@ -163,7 +163,7 @@ Invoke-RestMethod -Uri "http://localhost:20128/v1/models" -Method Get
 
 ```powershell
 # Start
-$env:VERSION="0.3.96"; docker compose -f .\docker\docker-compose.yml up -d --build --force-recreate --remove-orphans
+$env:VERSION="0.4.2"; docker compose -f .\docker\docker-compose.yml up -d --build --force-recreate --remove-orphans
 
 # Logs
 docker compose -f .\docker\docker-compose.yml logs -f
@@ -182,25 +182,48 @@ docker compose -f .\docker\docker-compose.yml down -v --remove-orphans
 docker-compose -f docker/docker-compose.yml build <service_name>
 
 # Build không cache
-$env:VERSION="0.3.96"; docker compose -f .\docker\docker-compose.yml build --no-cache
+$env:VERSION="0.4.2"; docker compose -f .\docker\docker-compose.yml build --no-cache
 
 # Build + xem log chi tiết
-$env:VERSION="0.3.96"; docker compose -f .\docker\docker-compose.yml build --progress=plain
+$env:VERSION="0.4.2"; docker compose -f .\docker\docker-compose.yml build --progress=plain
 
 # Tag image local thành latest
-docker tag nqdev/9router:0.3.96 nqdev/9router:latest
+docker tag nqdev/9router:0.4.2 nqdev/9router:latest
 
 # Push image lên Docker Hub
-docker push nqdev/9router:0.3.96
+docker push nqdev/9router:0.4.2
 docker push nqdev/9router:latest
+```
+
+### Inline build, tag, and push Docker images
+
+```powershell
+# Inline build, tag, and push Docker images
+$env:VERSION="0.4.2"
+
+# Build image
+docker-compose -f .\docker\docker-compose.yml build --no-cache
+if ($?) {
+    # Tag image
+    docker tag nqdev/9router:$env:VERSION nqdev/9router:latest
+
+    # Push versioned image
+    docker push nqdev/9router:$env:VERSION
+
+    # Push latest image
+    docker push nqdev/9router:latest
+} else {
+    Write-Host "Build failed, stopping script."
+    exit 1
+}
 ```
 
 ### Fixbug and build image
 
 ```powershell
 # Build + xem log chi tiết
-$env:VERSION="0.3.96.002"; docker compose -f .\docker\docker-compose.yml build --progress=plain
+$env:VERSION="0.4.2.002"; docker compose -f .\docker\docker-compose.yml build --progress=plain
 
 # Push image lên Docker Hub
-docker push nqdev/9router:0.3.96.002
+docker push nqdev/9router:0.4.2.002
 ```
