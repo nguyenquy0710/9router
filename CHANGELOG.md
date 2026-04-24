@@ -1,3 +1,15 @@
+# v0.4.5 (2026-04-24)
+
+## Improvements
+- Cap maximum cooldown for rate limit handling in account unavailability and single-model chat flows
+- Dynamic custom model fetching for model selection
+
+# v0.4.3 (2026-04-24)
+
+## Improvements
+- Improve in-app download/update UX on dashboard
+- Improve Codex provider rate limit handling with precise cooldown (`resetsAtMs`) and email backfill for OAuth accounts
+
 # v0.4.2 (2026-04-24)
 
 ## Features
