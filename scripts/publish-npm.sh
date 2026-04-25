@@ -78,6 +78,8 @@ info "Copying MITM server (child-process — not traced by Next.js)..."
 # Copy to mitm/ (NOT src/mitm/) — bin/n9router.js sets MITM_SERVER_PATH here.
 mkdir -p .next/standalone/mitm
 cp -r src/mitm/. .next/standalone/mitm/
+mkdir -p .next/standalone/lib
+cp src/lib/dbFileSafety.js .next/standalone/lib/dbFileSafety.js
 
 info "Cleaning standalone — removing sensitive and packaging-breaking files..."
 # .gitignore traced here by Next.js causes npm's recursive ignore-walk to

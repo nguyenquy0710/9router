@@ -28,7 +28,7 @@ export function extractUsageFromResponse(responseBody) {
     return {
       prompt_tokens: responseBody.usage.input_tokens || 0,
       completion_tokens: responseBody.usage.output_tokens || 0,
-      cache_read_input_tokens: responseBody.usage.cache_read_input_tokens,
+      cache_read_input_tokens: responseBody.usage.cache_read_input_tokens ?? responseBody.usage.input_tokens_details?.cached_tokens,
       cache_creation_input_tokens: responseBody.usage.cache_creation_input_tokens
     };
   }
@@ -48,6 +48,7 @@ export function extractUsageFromResponse(responseBody) {
     return {
       prompt_tokens: responseBody.usageMetadata.promptTokenCount || 0,
       completion_tokens: responseBody.usageMetadata.candidatesTokenCount || 0,
+      cached_tokens: responseBody.usageMetadata.cachedContentTokenCount,
       reasoning_tokens: responseBody.usageMetadata.thoughtsTokenCount
     };
   }
