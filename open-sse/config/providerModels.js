@@ -6,6 +6,10 @@ import { buildTtsProviderModels } from "./ttsModels.js";
 // Field "provider" for special cases (e.g. AntiGravity models that call different backends)
 
 export const PROVIDER_MODELS = {
+  // API Key Providers
+  fptc: [
+    { id: "gpt-oss-20b", name: "GPT OSS 20B" },
+  ],
   // OAuth Providers (using alias)
   cc: [  // Claude Code
     { id: "claude-opus-4-7", name: "Claude Opus 4.7" },

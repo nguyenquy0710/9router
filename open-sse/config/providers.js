@@ -362,6 +362,10 @@ export const PROVIDERS = {
     format: "openai",
     headers: {}
   },
+  fptc: {
+    baseUrl: "https://mkp-api.fptcloud.com/v1/chat/completions",
+    format: "openai"
+  },
 };
 
 export const OLLAMA_LOCAL_DEFAULT_HOST = "http://localhost:11434";

@@ -99,6 +99,7 @@ export const APIKEY_PROVIDERS = {
   exa: { id: "exa", alias: "exa", name: "Exa", icon: "manage_search", color: "#2563EB", textIcon: "EX", website: "https://exa.ai", serviceKinds: ["webSearch"] },
   searxng: { id: "searxng", alias: "searxng", name: "SearXNG", icon: "saved_search", color: "#3B82F6", textIcon: "SX", website: "https://docs.searxng.org", serviceKinds: ["webSearch"], noAuth: true },
   firecrawl: { id: "firecrawl", alias: "firecrawl", name: "Firecrawl", icon: "local_fire_department", color: "#F59E0B", textIcon: "FC", website: "https://firecrawl.dev", serviceKinds: ["webFetch"] },
+  fptc: { id: "fptc", alias: "fptc", name: "FPTCloud", icon: "cloud", color: "#E2001A", textIcon: "FP", website: "https://fptcloud.com", serviceKinds: ["llm"] },
 };
 
 // Web Cookie Providers (use browser session cookie instead of API key)
