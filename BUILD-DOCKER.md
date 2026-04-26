@@ -199,7 +199,7 @@ docker push nqdev/9router:latest
 
 ```powershell
 # Inline build, tag, and push Docker images
-$env:VERSION="0.4.5"
+$env:VERSION="0.4.6"
 
 # Build image
 docker-compose -f .\docker\docker-compose.yml build --no-cache
@@ -222,8 +222,8 @@ if ($?) {
 
 ```powershell
 # Build + xem log chi tiết
-$env:VERSION="0.4.5"; docker compose -f .\docker\docker-compose.yml build --progress=plain
+$env:VERSION="0.4.6"; docker compose -f .\docker\docker-compose.yml build --progress=plain
 
 # Push image lên Docker Hub
-docker push nqdev/9router:0.4.5
+docker push nqdev/9router:0.4.6
 ```

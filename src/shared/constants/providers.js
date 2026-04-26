@@ -100,7 +100,7 @@ export const APIKEY_PROVIDERS = {
   exa: { id: "exa", alias: "exa", name: "Exa", icon: "manage_search", color: "#2563EB", textIcon: "EX", website: "https://exa.ai", serviceKinds: ["webSearch"] },
   searxng: { id: "searxng", alias: "searxng", name: "SearXNG", icon: "saved_search", color: "#3B82F6", textIcon: "SX", website: "https://docs.searxng.org", serviceKinds: ["webSearch"], noAuth: true },
   firecrawl: { id: "firecrawl", alias: "firecrawl", name: "Firecrawl", icon: "local_fire_department", color: "#F59E0B", textIcon: "FC", website: "https://firecrawl.dev", serviceKinds: ["webFetch"] },
-  fptc: { id: "fptc", alias: "fptc", name: "FPTCloud", icon: "cloud", color: "#E2001A", textIcon: "FP", website: "https://fptcloud.com", serviceKinds: ["llm"] },
+  fptc: { id: "fptc", alias: "fptc", name: "FPTCloud", icon: "cloud", color: "#E2001A", textIcon: "FPTC", website: "https://ai.fptcloud.com/pricing/maas", deprecationNotice: "Requires an FPTCloud account and paid subscription to use. See details at https://ai.fptcloud.com/pricing/maas", serviceKinds: ["llm"] },
 };
 
 // Web Cookie Providers (use browser session cookie instead of API key)
@@ -111,15 +111,15 @@ export const WEB_COOKIE_PROVIDERS = {
 
 // Media provider kinds — each kind maps to a route and endpoint config
 export const MEDIA_PROVIDER_KINDS = [
-  { id: "embedding",   label: "Embedding",      icon: "data_array",        endpoint: { method: "POST", path: "/v1/embeddings" } },
-  { id: "image",       label: "Text to Image",  icon: "brush",             endpoint: { method: "POST", path: "/v1/images/generations" } },
-  { id: "imageToText", label: "Image to Text",  icon: "image_search",      endpoint: { method: "POST", path: "/v1/images/understanding" } },
-  { id: "tts",         label: "Text To Speech", icon: "record_voice_over", endpoint: { method: "POST", path: "/v1/audio/speech" } },
-  { id: "stt",         label: "STT",            icon: "mic",               endpoint: { method: "POST", path: "/v1/audio/transcriptions" } },
-  { id: "webSearch",   label: "Web Search",     icon: "travel_explore",    endpoint: { method: "POST", path: "/v1/search" } },
-  { id: "webFetch",    label: "Web Fetch",      icon: "language",          endpoint: { method: "POST", path: "/v1/web/fetch" } },
-  { id: "video",       label: "Video",          icon: "movie",             endpoint: { method: "POST", path: "/v1/video/generations" } },
-  { id: "music",       label: "Music",          icon: "music_note",        endpoint: { method: "POST", path: "/v1/audio/music" } },
+  { id: "embedding", label: "Embedding", icon: "data_array", endpoint: { method: "POST", path: "/v1/embeddings" } },
+  { id: "image", label: "Text to Image", icon: "brush", endpoint: { method: "POST", path: "/v1/images/generations" } },
+  { id: "imageToText", label: "Image to Text", icon: "image_search", endpoint: { method: "POST", path: "/v1/images/understanding" } },
+  { id: "tts", label: "Text To Speech", icon: "record_voice_over", endpoint: { method: "POST", path: "/v1/audio/speech" } },
+  { id: "stt", label: "STT", icon: "mic", endpoint: { method: "POST", path: "/v1/audio/transcriptions" } },
+  { id: "webSearch", label: "Web Search", icon: "travel_explore", endpoint: { method: "POST", path: "/v1/search" } },
+  { id: "webFetch", label: "Web Fetch", icon: "language", endpoint: { method: "POST", path: "/v1/web/fetch" } },
+  { id: "video", label: "Video", icon: "movie", endpoint: { method: "POST", path: "/v1/video/generations" } },
+  { id: "music", label: "Music", icon: "music_note", endpoint: { method: "POST", path: "/v1/audio/music" } },
 ];
 
 export const OPENAI_COMPATIBLE_PREFIX = "openai-compatible-";

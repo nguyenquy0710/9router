@@ -369,7 +369,10 @@ export const PROVIDERS = {
   },
   fptc: {
     baseUrl: "https://mkp-api.fptcloud.com/v1/chat/completions",
-    format: "openai"
+    format: "openai",
+    headers: {
+      "Content-Type": "application/json",
+    },
   },
 };
 

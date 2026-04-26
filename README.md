@@ -13,7 +13,8 @@
   
   [🚀 Quick Start](#-quick-start) • [💡 Features](#-key-features) • [📖 Setup](#-setup-guide) • [🌐 Website](https://9router.com)
 
-  [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md)
+[🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md)
+
 </div>
 
 ---
@@ -107,6 +108,7 @@ PORT=20128 HOSTNAME=0.0.0.0 NEXT_PUBLIC_BASE_URL=http://localhost:20128 npm run 
 ```
 
 Default URLs:
+
 - Dashboard: `http://localhost:20128/dashboard`
 - OpenAI-compatible API: `http://localhost:20128/v1`
 
@@ -121,6 +123,7 @@ Default URLs:
 [![9Router + Claude Code Setup](https://img.youtube.com/vi/raEyZPg5xE0/maxresdefault.jpg)](https://www.youtube.com/watch?v=raEyZPg5xE0)
 
 **🎬 Watch the complete step-by-step tutorial:**
+
 - ✅ 9Router installation & setup
 - ✅ FREE Claude Sonnet 4.5 configuration
 - ✅ Claude Code integration
@@ -347,18 +350,18 @@ Default URLs:
 
 ## 💡 Key Features
 
-| Feature | What It Does | Why It Matters |
-|---------|--------------|----------------|
-| 🎯 **Smart 3-Tier Fallback** | Auto-route: Subscription → Cheap → Free | Never stop coding, zero downtime |
-| 📊 **Real-Time Quota Tracking** | Live token count + reset countdown | Maximize subscription value |
-| 🔄 **Format Translation** | OpenAI ↔ Claude ↔ Gemini seamless | Works with any CLI tool |
-| 👥 **Multi-Account Support** | Multiple accounts per provider | Load balancing + redundancy |
-| 🔄 **Auto Token Refresh** | OAuth tokens refresh automatically | No manual re-login needed |
-| 🎨 **Custom Combos** | Create unlimited model combinations | Tailor fallback to your needs |
-| 📝 **Request Logging** | Debug mode with full request/response logs | Troubleshoot issues easily |
-| 💾 **Cloud Sync** | Sync config across devices | Same setup everywhere |
-| 📊 **Usage Analytics** | Track tokens, cost, trends over time | Optimize spending |
-| 🌐 **Deploy Anywhere** | Localhost, VPS, Docker, Cloudflare Workers | Flexible deployment options |
+| Feature                         | What It Does                               | Why It Matters                   |
+| ------------------------------- | ------------------------------------------ | -------------------------------- |
+| 🎯 **Smart 3-Tier Fallback**    | Auto-route: Subscription → Cheap → Free    | Never stop coding, zero downtime |
+| 📊 **Real-Time Quota Tracking** | Live token count + reset countdown         | Maximize subscription value      |
+| 🔄 **Format Translation**       | OpenAI ↔ Claude ↔ Gemini seamless          | Works with any CLI tool          |
+| 👥 **Multi-Account Support**    | Multiple accounts per provider             | Load balancing + redundancy      |
+| 🔄 **Auto Token Refresh**       | OAuth tokens refresh automatically         | No manual re-login needed        |
+| 🎨 **Custom Combos**            | Create unlimited model combinations        | Tailor fallback to your needs    |
+| 📝 **Request Logging**          | Debug mode with full request/response logs | Troubleshoot issues easily       |
+| 💾 **Cloud Sync**               | Sync config across devices                 | Same setup everywhere            |
+| 📊 **Usage Analytics**          | Track tokens, cost, trends over time       | Optimize spending                |
+| 🌐 **Deploy Anywhere**          | Localhost, VPS, Docker, Cloudflare Workers | Flexible deployment options      |
 
 <details>
 <summary><b>📖 Feature Details</b></summary>
@@ -386,6 +389,7 @@ Combo: "my-coding-stack"
 ### 🔄 Format Translation
 
 Seamless translation between formats:
+
 - **OpenAI** ↔ **Claude** ↔ **Gemini** ↔ **OpenAI Responses**
 - Your CLI tool sends OpenAI format → 9Router translates → Provider receives native format
 - Works with any tool that supports custom OpenAI endpoints
@@ -439,14 +443,14 @@ Seamless translation between formats:
 - Optimize your AI spending
 
 > **💡 IMPORTANT - Understanding Dashboard Costs:**
-> 
-> The "cost" displayed in Usage Analytics is **for tracking and comparison purposes only**. 
+>
+> The "cost" displayed in Usage Analytics is **for tracking and comparison purposes only**.
 > 9Router itself **never charges** you anything. You only pay providers directly (if using paid services).
-> 
-> **Example:** If your dashboard shows "$290 total cost" while using iFlow models, this represents 
+>
+> **Example:** If your dashboard shows "$290 total cost" while using iFlow models, this represents
 > what you would have paid using paid APIs directly. Your actual cost = **$0** (iFlow is free unlimited).
-> 
-> Think of it as a "savings tracker" showing how much you're saving by using free models or 
+>
+> Think of it as a "savings tracker" showing how much you're saving by using free models or
 > routing through 9Router!
 
 ### 🌐 Deploy Anywhere
@@ -462,18 +466,18 @@ Seamless translation between formats:
 
 ## 💰 Pricing at a Glance
 
-| Tier | Provider | Cost | Quota Reset | Best For |
-|------|----------|------|-------------|----------|
-| **💳 SUBSCRIPTION** | Claude Code (Pro) | $20/mo | 5h + weekly | Already subscribed |
-| | Codex (Plus/Pro) | $20-200/mo | 5h + weekly | OpenAI users |
-| | Gemini CLI | **FREE** | 180K/mo + 1K/day | Everyone! |
-| | GitHub Copilot | $10-19/mo | Monthly | GitHub users |
-| **💰 CHEAP** | GLM-4.7 | $0.6/1M | Daily 10AM | Budget backup |
-| | MiniMax M2.1 | $0.2/1M | 5-hour rolling | Cheapest option |
-| | Kimi K2 | $9/mo flat | 10M tokens/mo | Predictable cost |
-| **🆓 FREE** | iFlow | $0 | Unlimited | 8 models free |
-| | Qwen | $0 | Unlimited | 3 models free |
-| | Kiro | $0 | Unlimited | Claude free |
+| Tier                | Provider          | Cost       | Quota Reset      | Best For           |
+| ------------------- | ----------------- | ---------- | ---------------- | ------------------ |
+| **💳 SUBSCRIPTION** | Claude Code (Pro) | $20/mo     | 5h + weekly      | Already subscribed |
+|                     | Codex (Plus/Pro)  | $20-200/mo | 5h + weekly      | OpenAI users       |
+|                     | Gemini CLI        | **FREE**   | 180K/mo + 1K/day | Everyone!          |
+|                     | GitHub Copilot    | $10-19/mo  | Monthly          | GitHub users       |
+| **💰 CHEAP**        | GLM-4.7           | $0.6/1M    | Daily 10AM       | Budget backup      |
+|                     | MiniMax M2.1      | $0.2/1M    | 5-hour rolling   | Cheapest option    |
+|                     | Kimi K2           | $9/mo flat | 10M tokens/mo    | Predictable cost   |
+| **🆓 FREE**         | iFlow             | $0         | Unlimited        | 8 models free      |
+|                     | Qwen              | $0         | Unlimited        | 3 models free      |
+|                     | Kiro              | $0         | Unlimited        | Claude free        |
 
 **💡 Pro Tip:** Start with Gemini CLI (180K free/month) + iFlow (unlimited free) combo = $0 cost!
 
@@ -494,6 +498,7 @@ Seamless translation between formats:
 The dashboard shows **estimated costs** as if you were using paid APIs directly. This is **not billing** - it's a comparison tool to show your savings.
 
 **Example Scenario:**
+
 ```
 Dashboard Display:
 • Total Requests: 1,662
@@ -507,6 +512,7 @@ Reality Check:
 ```
 
 **Payment Rules:**
+
 - **Subscription providers** (Claude Code, Codex): Pay them directly via their websites
 - **Cheap providers** (GLM, MiniMax): Pay them directly, 9Router just routes
 - **FREE providers** (iFlow, Kiro, Qwen): Genuinely free forever, no hidden charges
@@ -521,6 +527,7 @@ Reality Check:
 **Problem:** Quota expires unused, rate limits during heavy coding
 
 **Solution:**
+
 ```
 Combo: "maximize-claude"
   1. cc/claude-opus-4-6        (use subscription fully)
@@ -536,6 +543,7 @@ vs. $20 + hitting limits = frustration
 **Problem:** Can't afford subscriptions, need reliable AI coding
 
 **Solution:**
+
 ```
 Combo: "free-forever"
   1. gc/gemini-3-flash         (180K free/month)
@@ -551,6 +559,7 @@ Quality: Production-ready models
 **Problem:** Deadlines, can't afford downtime
 
 **Solution:**
+
 ```
 Combo: "always-on"
   1. cc/claude-opus-4-6        (best quality)
@@ -568,6 +577,7 @@ Monthly cost: $20-200 (subscriptions) + $10-20 (backup)
 **Problem:** Need AI assistant in messaging apps (WhatsApp, Telegram, Slack...), completely free
 
 **Solution:**
+
 ```
 Combo: "openclaw-free"
   1. if/glm-4.7                (unlimited free)
@@ -588,6 +598,7 @@ Access via: WhatsApp, Telegram, Slack, Discord, iMessage, Signal...
 The dashboard tracks your token usage and displays **estimated costs** as if you were using paid APIs directly. This is **not actual billing** - it's a reference to show how much you're saving by using free models or existing subscriptions through 9Router.
 
 **Example:**
+
 - **Dashboard shows:** "$290 total cost"
 - **Reality:** You're using iFlow (FREE unlimited)
 - **Your actual cost:** **$0.00**
@@ -603,6 +614,7 @@ The cost display is a "savings tracker" to help you understand your usage patter
 **No.** 9Router is free, open-source software that runs on your own computer. It never charges you anything.
 
 **You only pay:**
+
 - ✅ **Subscription providers** (Claude Code $20/mo, Codex $20-200/mo) → Pay them directly on their websites
 - ✅ **Cheap providers** (GLM, MiniMax) → Pay them directly, 9Router just routes your requests
 - ❌ **9Router itself** → **Never charges anything, ever**
@@ -614,11 +626,12 @@ The cost display is a "savings tracker" to help you understand your usage patter
 <details>
 <summary><b>🆓 Are FREE providers really unlimited?</b></summary>
 
-**Yes!** Providers marked as FREE (iFlow, Kiro, Qwen) are genuinely unlimited with **no hidden charges**. 
+**Yes!** Providers marked as FREE (iFlow, Kiro, Qwen) are genuinely unlimited with **no hidden charges**.
 
 These are free services offered by those respective companies:
+
 - **iFlow**: Free unlimited access to 8+ models via OAuth
-- **Kiro**: Free unlimited Claude models via AWS Builder ID  
+- **Kiro**: Free unlimited Claude models via AWS Builder ID
 - **Qwen**: Free unlimited access to Qwen models via device auth
 
 9Router just routes your requests to them - there's no "catch" or future billing. They're truly free services, and 9Router makes them easy to use with fallback support.
@@ -633,17 +646,21 @@ These are free services offered by those respective companies:
 **Free-First Strategy:**
 
 1. **Start with 100% free combo:**
+
    ```
    1. gc/gemini-3-flash (180K/month free from Google)
    2. if/kimi-k2-thinking (unlimited free from iFlow)
    3. qw/qwen3-coder-plus (unlimited free from Qwen)
    ```
+
    **Cost: $0/month**
 
 2. **Add cheap backup** only if you need it:
+
    ```
    4. glm/glm-4.7 ($0.6/1M tokens)
    ```
+
    **Additional cost: Only pay for what you actually use**
 
 3. **Use subscription providers last:**
@@ -662,10 +679,12 @@ These are free services offered by those respective companies:
 **Scenario:** You're on a coding sprint and blow through your quotas
 
 **Without 9Router:**
+
 - ❌ Hit rate limit → Work stops → Frustration
 - ❌ Or: Accidentally rack up huge API bills
 
 **With 9Router:**
+
 - ✅ Subscription hits limit → Auto-fallback to cheap tier
 - ✅ Cheap tier gets expensive → Auto-fallback to free tier
 - ✅ Never stop coding → Predictable costs
@@ -1002,6 +1021,7 @@ docker run -d \
 ```
 
 Container defaults:
+
 - `PORT=20128`
 - `HOSTNAME=0.0.0.0`
 
@@ -1015,26 +1035,27 @@ docker stop 9router && docker rm 9router
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `JWT_SECRET` | `9router-default-secret-change-me` | JWT signing secret for dashboard auth cookie (**change in production**) |
-| `INITIAL_PASSWORD` | `123456` | First login password when no saved hash exists |
-| `DATA_DIR` | `~/.9router` | Main app database location (`db.json`) |
-| `PORT` | framework default | Service port (`20128` in examples) |
-| `HOSTNAME` | framework default | Bind host (Docker defaults to `0.0.0.0`) |
-| `NODE_ENV` | runtime default | Set `production` for deploy |
-| `BASE_URL` | `http://localhost:20128` | Server-side internal base URL used by cloud sync jobs |
-| `CLOUD_URL` | `https://9router.com` | Server-side cloud sync endpoint base URL |
-| `NEXT_PUBLIC_BASE_URL` | `http://localhost:3000` | Backward-compatible/public base URL (prefer `BASE_URL` for server runtime) |
-| `NEXT_PUBLIC_CLOUD_URL` | `https://9router.com` | Backward-compatible/public cloud URL (prefer `CLOUD_URL` for server runtime) |
-| `API_KEY_SECRET` | `endpoint-proxy-api-key-secret` | HMAC secret for generated API keys |
-| `MACHINE_ID_SALT` | `endpoint-proxy-salt` | Salt for stable machine ID hashing |
-| `ENABLE_REQUEST_LOGS` | `false` | Enables request/response logs under `logs/` |
-| `AUTH_COOKIE_SECURE` | `false` | Force `Secure` auth cookie (set `true` behind HTTPS reverse proxy) |
-| `REQUIRE_API_KEY` | `false` | Enforce Bearer API key on `/v1/*` routes (recommended for internet-exposed deploys) |
-| `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY` | empty | Optional outbound proxy for upstream provider calls |
+| Variable                                             | Default                            | Description                                                                         |
+| ---------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `JWT_SECRET`                                         | `9router-default-secret-change-me` | JWT signing secret for dashboard auth cookie (**change in production**)             |
+| `INITIAL_PASSWORD`                                   | `123456`                           | First login password when no saved hash exists                                      |
+| `DATA_DIR`                                           | `~/.9router`                       | Main app database location (`db.json`)                                              |
+| `PORT`                                               | framework default                  | Service port (`20128` in examples)                                                  |
+| `HOSTNAME`                                           | framework default                  | Bind host (Docker defaults to `0.0.0.0`)                                            |
+| `NODE_ENV`                                           | runtime default                    | Set `production` for deploy                                                         |
+| `BASE_URL`                                           | `http://localhost:20128`           | Server-side internal base URL used by cloud sync jobs                               |
+| `CLOUD_URL`                                          | `https://9router.com`              | Server-side cloud sync endpoint base URL                                            |
+| `NEXT_PUBLIC_BASE_URL`                               | `http://localhost:3000`            | Backward-compatible/public base URL (prefer `BASE_URL` for server runtime)          |
+| `NEXT_PUBLIC_CLOUD_URL`                              | `https://9router.com`              | Backward-compatible/public cloud URL (prefer `CLOUD_URL` for server runtime)        |
+| `API_KEY_SECRET`                                     | `endpoint-proxy-api-key-secret`    | HMAC secret for generated API keys                                                  |
+| `MACHINE_ID_SALT`                                    | `endpoint-proxy-salt`              | Salt for stable machine ID hashing                                                  |
+| `ENABLE_REQUEST_LOGS`                                | `false`                            | Enables request/response logs under `logs/`                                         |
+| `AUTH_COOKIE_SECURE`                                 | `false`                            | Force `Secure` auth cookie (set `true` behind HTTPS reverse proxy)                  |
+| `REQUIRE_API_KEY`                                    | `false`                            | Enforce Bearer API key on `/v1/*` routes (recommended for internet-exposed deploys) |
+| `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY` | empty                              | Optional outbound proxy for upstream provider calls                                 |
 
 Notes:
+
 - Lowercase proxy variables are also supported: `http_proxy`, `https_proxy`, `all_proxy`, `no_proxy`.
 - `.env` is not baked into Docker image (`.dockerignore`); inject runtime config with `--env-file` or `-e`.
 - On Windows, `APPDATA` can be used for local storage path resolution.
@@ -1057,38 +1078,47 @@ Notes:
 <summary><b>View all available models</b></summary>
 
 **Claude Code (`cc/`)** - Pro/Max:
+
 - `cc/claude-opus-4-6`
 - `cc/claude-sonnet-4-5-20250929`
 - `cc/claude-haiku-4-5-20251001`
 
 **Codex (`cx/`)** - Plus/Pro:
+
 - `cx/gpt-5.2-codex`
 - `cx/gpt-5.1-codex-max`
 
 **Gemini CLI (`gc/`)** - FREE:
+
 - `gc/gemini-3-flash-preview`
 - `gc/gemini-2.5-pro`
 
 **GitHub Copilot (`gh/`)**:
+
 - `gh/gpt-5`
 - `gh/claude-4.5-sonnet`
 
 **GLM (`glm/`)** - $0.6/1M:
+
 - `glm/glm-4.7`
 
 **MiniMax (`minimax/`)** - $0.2/1M:
+
 - `minimax/MiniMax-M2.1`
 
 **iFlow (`if/`)** - FREE:
+
 - `if/kimi-k2-thinking`
 - `if/qwen3-coder-plus`
 - `if/deepseek-r1`
 
 **Qwen (`qw/`)** - FREE:
+
 - `qw/qwen3-coder-plus`
 - `qw/qwen3-coder-flash`
 
 **Kiro (`kr/`)** - FREE:
+
 - `kr/claude-sonnet-4.5`
 - `kr/claude-haiku-4.5`
 
@@ -1099,30 +1129,37 @@ Notes:
 ## 🐛 Troubleshooting
 
 **"Language model did not provide messages"**
+
 - Provider quota exhausted → Check dashboard quota tracker
 - Solution: Use combo fallback or switch to cheaper tier
 
 **Rate limiting**
+
 - Subscription quota out → Fallback to GLM/MiniMax
 - Add combo: `cc/claude-opus-4-6 → glm/glm-4.7 → if/kimi-k2-thinking`
 
 **OAuth token expired**
+
 - Auto-refreshed by 9Router
 - If issues persist: Dashboard → Provider → Reconnect
 
 **High costs**
+
 - Check usage stats in Dashboard
 - Switch primary model to GLM/MiniMax
 - Use free tier (Gemini CLI, iFlow) for non-critical tasks
 
 **Dashboard opens on wrong port**
+
 - Set `PORT=20128` and `NEXT_PUBLIC_BASE_URL=http://localhost:20128`
 
 **First login not working**
+
 - Check `INITIAL_PASSWORD` in `.env`
 - If unset, fallback password is `123456`
 
 **No request logs under `logs/`**
+
 - Set `ENABLE_REQUEST_LOGS=true`
 
 ---
@@ -1185,11 +1222,11 @@ Thanks to all contributors who helped make 9Router better!
 
 [![Star Chart](https://starchart.cc/decolua/9router.svg?variant=adaptive)](https://starchart.cc/decolua/9router)
 
-
-
 ## 🔀 Forks
 
 **[OmniRoute](https://github.com/diegosouzapw/OmniRoute)** — A full-featured TypeScript fork of 9Router. Adds 36+ providers, 4-tier auto-fallback, multi-modal APIs (images, embeddings, audio, TTS), circuit breaker, semantic cache, LLM evaluations, and a polished dashboard. 368+ unit tests. Available via npm and Docker.
+
+** [n9router](https://github.com/nightwalker89/n9router)** - is a fork of 9Router - Free AI Router with added Token Rotate — automatic multi-account rotation for Antigravity at the MITM proxy level.
 
 ---
 
