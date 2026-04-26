@@ -222,8 +222,8 @@ if ($?) {
 
 ```powershell
 # Build + xem log chi tiết
-$env:VERSION="0.4.6"; docker compose -f .\docker\docker-compose.yml build --progress=plain
+$env:VERSION="0.4.6.003"; docker compose -f .\docker\docker-compose.yml build --progress=plain
 
 # Push image lên Docker Hub
-docker push nqdev/9router:0.4.6
+docker push nqdev/9router:0.4.6.003
 ```
