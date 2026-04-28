@@ -367,12 +367,10 @@ export const PROVIDERS = {
     format: "openai",
     headers: {}
   },
-  fptc: {
-    baseUrl: "https://mkp-api.fptcloud.com/v1/chat/completions",
-    format: "openai",
-    headers: {
-      "Content-Type": "application/json",
-    },
+  // Cloudflare Workers AI - {accountId} resolved from credentials.providerSpecificData.accountId
+  "cloudflare-ai": {
+    baseUrl: "https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/v1/chat/completions",
+    format: "openai"
   },
 };
 
