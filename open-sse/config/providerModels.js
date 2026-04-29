@@ -6,6 +6,13 @@ import { buildTtsProviderModels } from "./ttsModels.js";
 // Field "provider" for special cases (e.g. AntiGravity models that call different backends)
 
 export const PROVIDER_MODELS = {
+  // API Key Providers
+  fptc: [ // FPT Cloud - https://ai.fptcloud.com/pricing/maas
+    { id: "gpt-oss-20b", name: "GPT OSS 20B" },
+    { id: "gemma-3-27b-it", name: "Gemma 3 27B IT" },
+    { id: "Qwen3-32B", name: "Qwen3 32B" },
+    { id: "SaoLa-Llama3.1-planner", name: "SaoLa Llama 3.1 Planner" },
+  ],
   // OAuth Providers (using alias)
   cc: [  // Claude Code
     { id: "claude-opus-4-7", name: "Claude Opus 4.7" },
@@ -255,8 +262,8 @@ export const PROVIDER_MODELS = {
     { id: "nvidia/llama-nemotron-embed-vl-1b-v2:free", name: "NVIDIA Nemotron Embed VL 1B V2 (Free)", type: "embedding" },
     // TTS models
     { id: "openai/gpt-4o-mini-tts", name: "GPT-4o Mini TTS", type: "tts" },
-    { id: "openai/tts-1-hd",        name: "TTS-1 HD",        type: "tts" },
-    { id: "openai/tts-1",           name: "TTS-1",           type: "tts" },
+    { id: "openai/tts-1-hd", name: "TTS-1 HD", type: "tts" },
+    { id: "openai/tts-1", name: "TTS-1", type: "tts" },
     // Image models
     { id: "openai/dall-e-3", name: "DALL-E 3 (via OpenRouter)", type: "image", params: ["size", "quality", "style", "response_format"] },
     { id: "openai/gpt-image-1", name: "GPT Image 1 (via OpenRouter)", type: "image", params: ["n", "size", "quality", "response_format"] },
