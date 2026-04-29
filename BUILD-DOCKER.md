@@ -163,7 +163,7 @@ Invoke-RestMethod -Uri "http://localhost:20128/v1/models" -Method Get
 
 ```powershell
 # Start
-$env:VERSION="0.4.2"; docker compose -f .\docker\docker-compose.yml up -d --build --force-recreate --remove-orphans
+$env:VERSION="0.4.9"; docker compose -f .\docker\docker-compose.yml up -d --build --force-recreate --remove-orphans
 
 # Logs
 docker compose -f .\docker\docker-compose.yml logs -f
@@ -182,16 +182,16 @@ docker compose -f .\docker\docker-compose.yml down -v --remove-orphans
 docker-compose -f docker/docker-compose.yml build <service_name>
 
 # Build không cache
-$env:VERSION="0.4.2"; docker compose -f .\docker\docker-compose.yml build --no-cache
+$env:VERSION="0.4.9"; docker compose -f .\docker\docker-compose.yml build --no-cache
 
 # Build + xem log chi tiết
-$env:VERSION="0.4.2"; docker compose -f .\docker\docker-compose.yml build --progress=plain
+$env:VERSION="0.4.9"; docker compose -f .\docker\docker-compose.yml build --progress=plain
 
 # Tag image local thành latest
-docker tag nqdev/9router:0.4.2 nqdev/9router:latest
+docker tag nqdev/9router:0.4.9 nqdev/9router:latest
 
 # Push image lên Docker Hub
-docker push nqdev/9router:0.4.2
+docker push nqdev/9router:0.4.9
 docker push nqdev/9router:latest
 ```
 
@@ -199,7 +199,7 @@ docker push nqdev/9router:latest
 
 ```powershell
 # Inline build, tag, and push Docker images
-$env:VERSION="0.4.6"
+$env:VERSION="0.4.9"
 
 # Build image
 docker-compose -f .\docker\docker-compose.yml build --no-cache
@@ -222,8 +222,8 @@ if ($?) {
 
 ```powershell
 # Build + xem log chi tiết
-$env:VERSION="0.4.6.003"; docker compose -f .\docker\docker-compose.yml build --progress=plain
+$env:VERSION="0.4.9.003"; docker compose -f .\docker\docker-compose.yml build --progress=plain
 
 # Push image lên Docker Hub
-docker push nqdev/9router:0.4.6.003
+docker push nqdev/9router:0.4.9.003
 ```
